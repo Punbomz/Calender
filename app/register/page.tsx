@@ -6,7 +6,7 @@ import { auth } from "@/lib/firebaseClient"
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 
 
-export default function Pages(){
+export default function RegisterRage(){
     return (
         <div>
             Register Page
