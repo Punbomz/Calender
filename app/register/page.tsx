@@ -103,22 +103,25 @@ export default function RegisterPage() {
   };
 
   return (
-  // ทำพื้นหลังให้เต็มจอ + จัดการ์ดให้อยู่กึ่งกลาง
-  <main className="min-h-[100dvh] flex items-center justify-center bg-zinc-900">
-    {/* การ์ด */}
-    <section className="w-full max-w-[480px] sm:max-w-[560px] px-4">
-      <div className="bg-zinc-200/95 rounded-2xl shadow-lg p-6 sm:p-8">
-        <h1 className="font-mono text-3xl sm:text-4xl font-extrabold text-center mb-6 sm:mb-8">
+  // พื้นหลังเต็มจอ (ดาร์ค)
+  <main className="min-h-[100dvh] bg-zinc-900 flex items-center justify-center">
+    {/* กล่องเทาอ่อน ขนาดกำลังดี กลางจอ */}
+    <section className="w-full px-4">
+      <div className="mx-auto w-full max-w-[520px] bg-zinc-200 rounded-xl shadow-lg p-6 sm:p-8">
+        {/* หัวข้อฟอนต์โมโน หนา กลาง */}
+        <h1 className="font-mono text-4xl font-extrabold text-center mb-8 text-zinc-800">
           Register
         </h1>
 
-        <form onSubmit={handleRegister} className="space-y-3 sm:space-y-4">
+        <form onSubmit={handleRegister} className="space-y-4">
           {/* Email */}
-          <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] items-center gap-2 sm:gap-3">
-            <label className="font-mono text-base sm:text-lg sm:text-left">Email</label>
+          <div className="grid grid-cols-[120px_1fr] items-center gap-3">
+            <label className="font-mono text-lg font-bold text-zinc-900">
+              Email
+            </label>
             <input
               type="email"
-              className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 sm:py-2.5 outline-none focus:ring focus:ring-zinc-400"
+              className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 outline-none focus:ring focus:ring-zinc-400"
               placeholder="Type your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -126,11 +129,13 @@ export default function RegisterPage() {
           </div>
 
           {/* Password */}
-          <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] items-center gap-2 sm:gap-3">
-            <label className="font-mono text-base sm:text-lg">Password</label>
+          <div className="grid grid-cols-[120px_1fr] items-center gap-3">
+            <label className="font-mono text-lg font-bold text-zinc-900">
+              Password
+            </label>
             <input
               type="password"
-              className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 sm:py-2.5 outline-none focus:ring"
+              className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 outline-none focus:ring"
               placeholder="Type your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -138,14 +143,13 @@ export default function RegisterPage() {
           </div>
 
           {/* Confirm Password */}
-          <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] items-center gap-2 sm:gap-3">
-            <label className="font-mono text-base sm:text-lg leading-tight">
-              <span className="sm:hidden">Confirm Password</span>
-              <span className="hidden sm:inline">Confirm<br/>Password</span>
+          <div className="grid grid-cols-[120px_1fr] items-center gap-3">
+            <label className="font-mono text-lg font-bold text-zinc-900 leading-tight">
+              Confirm<br />Password
             </label>
             <input
               type="password"
-              className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 sm:py-2.5 outline-none focus:ring"
+              className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 outline-none focus:ring"
               placeholder="Type your password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
@@ -153,10 +157,12 @@ export default function RegisterPage() {
           </div>
 
           {/* Username */}
-          <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] items-center gap-2 sm:gap-3">
-            <label className="font-mono text-base sm:text-lg">Username</label>
+          <div className="grid grid-cols-[120px_1fr] items-center gap-3">
+            <label className="font-mono text-lg font-bold text-zinc-900">
+              Username
+            </label>
             <input
-              className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 sm:py-2.5 outline-none focus:ring"
+              className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 outline-none focus:ring"
               placeholder="Type your username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -164,20 +170,22 @@ export default function RegisterPage() {
           </div>
 
           {/* Fullname */}
-          <div className="grid grid-cols-1 sm:grid-cols-[130px_1fr] items-center gap-2 sm:gap-3">
-            <label className="font-mono text-base sm:text-lg">Fullname</label>
+          <div className="grid grid-cols-[120px_1fr] items-center gap-3">
+            <label className="font-mono text-lg font-bold text-zinc-900">
+              Fullname
+            </label>
             <input
-              className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 sm:py-2.5 outline-none focus:ring"
+              className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 outline-none focus:ring"
               placeholder="Type your fullname"
               value={fullname}
               onChange={(e) => setFullname(e.target.value)}
             />
           </div>
 
-          {/* Upload Profile Picture */}
-          <div className="pt-1 sm:pt-2">
+          {/* Upload */}
+          <div className="pt-2">
             {preview && (
-              <div className="mb-2 flex items-center gap-3">
+              <div className="mb-3 flex items-center gap-3">
                 <img
                   src={preview}
                   alt="preview"
@@ -186,7 +194,6 @@ export default function RegisterPage() {
                 <span className="text-sm text-zinc-600">ตัวอย่างรูปโปรไฟล์</span>
               </div>
             )}
-
             <button
               type="button"
               onClick={onPickImage}
@@ -207,11 +214,11 @@ export default function RegisterPage() {
           {error && <p className="text-red-600 text-sm pt-1">{error}</p>}
 
           {/* Submit */}
-          <div className="pt-3 sm:pt-4">
+          <div className="pt-4">
             <button
               type="submit"
               disabled={submitting}
-              className="w-full sm:w-36 mx-auto block rounded-md bg-amber-900 hover:bg-amber-800 text-white font-mono text-lg sm:text-xl py-2 disabled:opacity-60"
+              className="w-36 mx-auto block rounded-md bg-amber-900 hover:bg-amber-800 text-white font-mono text-xl py-2 disabled:opacity-60"
             >
               {submitting ? "Loading..." : "Sign in"}
             </button>
@@ -221,5 +228,6 @@ export default function RegisterPage() {
     </section>
   </main>
 );
+
 
 }
