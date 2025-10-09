@@ -14,7 +14,7 @@ export async function registerUser(
   passwordValidation(password, confirmPassword);
     // Validate Email
     if (!validateEmail(email)) {
-        throw new Error(EMAIL_INVALID_MESSAGE);
+        return alert(EMAIL_INVALID_MESSAGE);
     }
     if (await checkEmailExists(email)) {
         return alert(EMAIL_ALREADY_IN_USE_MESSAGE);
