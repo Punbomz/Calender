@@ -6,10 +6,10 @@ import { auth } from "@/lib/firebaseClient"
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 
 
-export default function RegisterPage(){
+export default function Profile(){
     return (
         <div>
-            Register Page
+            Profile
         </div>
     )
 }
