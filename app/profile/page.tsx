@@ -6,7 +6,7 @@ import LogoutButton from "./LogoutButton";
 export default async function ProfilePage() {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
-
+  
   if (!session) {
     redirect("/login");
   }
