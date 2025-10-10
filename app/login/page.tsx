@@ -203,7 +203,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={onForgot}
                 disabled={loading}
-                className="text-sm text-zinc-700 hover:underline disabled:opacity-50"
+                className="text-sm text-zinc-700 hover:cursor-pointer hover:underline disabled:opacity-50"
               >
                 Forgot Password?
               </button>
@@ -225,7 +225,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-36 mx-auto block rounded-md bg-amber-900 hover:bg-amber-800 text-white font-mono text-xl py-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                className="w-36 mx-auto block rounded-md bg-amber-900 hover:cursor-pointer hover:bg-amber-800 text-white font-mono text-xl py-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
               >
                 {loading ? "Loading..." : "Log in"}
               </button>
@@ -245,7 +245,7 @@ export default function LoginPage() {
               type="button"
               onClick={onGoogleLogin}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 bg-white hover:bg-zinc-50 border-2 border-zinc-300 rounded-lg py-3 px-4 transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+              className="w-full flex items-center justify-center gap-3 bg-white hover:cursor-pointer hover:bg-zinc-50 border-2 border-zinc-300 rounded-lg py-3 px-4 transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
             >
               <svg viewBox="0 0 24 24" className="w-6 h-6">
                 <path
