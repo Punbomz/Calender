@@ -12,7 +12,7 @@ interface LoginResponse {
 
 export async function logoutUser(): Promise<LoginResponse> {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const session = cookieStore.get("session");
 
     if (session) {
@@ -22,7 +22,7 @@ export async function logoutUser(): Promise<LoginResponse> {
     }
 
     // Clear the session cookie
-    cookies().delete("session");
+    (await cookies()).delete("session");
 
     return {
       success: true,
@@ -31,7 +31,7 @@ export async function logoutUser(): Promise<LoginResponse> {
   } catch (error: any) {
     console.error("Logout error:", error);
     // Still clear the cookie even if there's an error
-    cookies().delete("session");
+    (await cookies()).delete("session");
     
     return {
       success: false,
