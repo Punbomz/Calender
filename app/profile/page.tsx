@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import GoogleLinkButton from "@/app/components/GoogleLinkButton";
 
 export default async function ProfilePage() {
   const cookieStore = await cookies();
@@ -19,6 +20,37 @@ export default async function ProfilePage() {
     // Get user data from Firestore
     const userDoc = await adminDb.collection("users").doc(uid).get();
     const userData = userDoc.data();
+
+    // Get user info from Firebase Auth (as fallback)
+    const authUser = await adminAuth.getUser(uid);
+
+    // Check if user signed in with Google
+    const signInProvider = decodedClaims.firebase?.sign_in_provider;
+    const hasGoogleProvider = authUser.providerData.some(
+      provider => provider.providerId === "google.com"
+    );
+    const isGoogleSignIn = signInProvider === "google.com" || hasGoogleProvider;
+
+    // Check if Google is linked (for non-Google sign-in users)
+    const isGoogleLinked = userData?.googleLinked || false;
+    const googleEmail = userData?.googleEmail || null;
+
+    // Helper function to get display name
+    const getDisplayName = () => {
+      return userData?.name || 
+             userData?.displayName || 
+             authUser.displayName || 
+             userData?.email?.split('@')[0] || 
+             "User";
+    };
+
+    // Helper function to get full name
+    const getFullName = () => {
+      return userData?.name || 
+             userData?.displayName || 
+             authUser.displayName || 
+             "Not set";
+    };
 
     const handleLogout = async () => {
       'use server';
@@ -44,9 +76,9 @@ export default async function ProfilePage() {
             <div className="flex items-center gap-4">
               {/* Profile Picture */}
               <div className="w-20 h-20 bg-black rounded-full flex items-center justify-center overflow-hidden">
-                {userData?.photoURL ? (
+                {userData?.photoURL || authUser.photoURL ? (
                   <img
-                    src={userData.photoURL}
+                    src={userData?.photoURL || authUser.photoURL || ""}
                     alt="Profile"
                     className="w-full h-full object-cover"
                   />
@@ -58,7 +90,7 @@ export default async function ProfilePage() {
               </div>
 
               <div>
-                <p className="text-gray-600">{userData?.name || "Not set"}</p>
+                <h2 className="text-xl font-bold">{userData?.displayName || userData?.name || authUser.displayName || userData?.email?.split('@')[0] || "User"}</h2>
               </div>
             </div>
 
@@ -72,14 +104,51 @@ export default async function ProfilePage() {
           <div className="bg-white rounded-lg p-6 mb-4">
             <div className="mb-4">
               <h3 className="text-lg font-bold mb-1">Fullname</h3>
-              <p className="text-gray-600">{userData?.name || "Not set"}</p>
+              <p className="text-gray-600">{getFullName()}</p>
             </div>
 
             <div>
               <h3 className="text-lg font-bold mb-1">Email</h3>
-              <p className="text-gray-600">{userData?.email || "N/A"}</p>
+              <p className="text-gray-600">{userData?.email || authUser.email || "N/A"}</p>
             </div>
           </div>
+
+          {/* Google Account Linking Section - Only show if NOT signed in with Google */}
+          {!isGoogleSignIn && (
+            <div className="bg-white rounded-lg p-6 mb-4">
+              <h3 className="text-lg font-bold mb-3">Account Linking</h3>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {/* Google Icon */}
+                  <div className="w-10 h-10 bg-white border-2 border-gray-200 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                  </div>
+
+                  <div>
+                    <p className="font-semibold">Google Account</p>
+                    {isGoogleLinked && googleEmail && (
+                      <p className="text-sm text-gray-500">{googleEmail}</p>
+                    )}
+                    {!isGoogleLinked && (
+                      <p className="text-sm text-gray-500">Not linked</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Link/Unlink Button */}
+                <GoogleLinkButton 
+                  isLinked={isGoogleLinked}
+                  userId={uid}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="space-y-3 mb-4">
