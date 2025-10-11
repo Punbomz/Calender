@@ -20,6 +20,33 @@ export default async function ProfilePage() {
     const userDoc = await adminDb.collection("users").doc(uid).get();
     const userData = userDoc.data();
 
+    // Helper function to convert Firestore Timestamp to Date string
+    const formatTimestamp = (timestamp: any) => {
+      if (!timestamp) return "N/A";
+      
+      // Check if it's a Firestore Timestamp object
+      if (timestamp._seconds !== undefined) {
+        return new Date(timestamp._seconds * 1000).toLocaleString();
+      }
+      
+      // Check if it has toDate method (Firestore Timestamp)
+      if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate().toLocaleString();
+      }
+      
+      // Try to parse as regular date
+      try {
+        const date = new Date(timestamp);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleString();
+        }
+      } catch (e) {
+        console.error("Error parsing date:", e);
+      }
+      
+      return "N/A";
+    };
+
     return (
       <main className="min-h-screen bg-zinc-900 text-white p-8">
         <div className="max-w-4xl mx-auto">
@@ -60,18 +87,10 @@ export default async function ProfilePage() {
                 <div className="capitalize">{userData?.provider || "email"}</div>
 
                 <div className="font-bold text-amber-500">Created At:</div>
-                <div>
-                  {userData?.createdAt
-                    ? new Date(userData.createdAt).toLocaleString()
-                    : "N/A"}
-                </div>
+                <div>{formatTimestamp(userData?.createdAt)}</div>
 
                 <div className="font-bold text-amber-500">Last Login:</div>
-                <div>
-                  {userData?.lastLogin
-                    ? new Date(userData.lastLogin).toLocaleString()
-                    : "N/A"}
-                </div>
+                <div>{formatTimestamp(userData?.lastLogin)}</div>
               </div>
 
               {/* Success Message */}
