@@ -27,7 +27,11 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/profile", request.url));
     }
   }
-
+  if (pathname === "/register") {
+    if (session) {
+      console.log("Already logged in, redirecting to profile");
+      return NextResponse.redirect(new URL("/profile", request.url));
+    }
   return NextResponse.next();
 }
 
