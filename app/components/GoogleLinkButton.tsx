@@ -60,7 +60,7 @@ export default function GoogleLinkButton({ isLinked, userId }: GoogleLinkButtonP
   };
 
   const handleUnlinkGoogle = async () => {
-    if (!confirm('Are you sure you want to unlink your Google account? If you are signed in with Google, you will be logged out.')) {
+    if (!confirm('Are you sure you want to unlink your Google account?')) {
       return;
     }
 
@@ -78,8 +78,35 @@ export default function GoogleLinkButton({ isLinked, userId }: GoogleLinkButtonP
         throw new Error(data.error || 'Failed to unlink Google account');
       }
 
-      // If the API indicates re-authentication is required, redirect to login
-      if (data.requiresReauth) {
+      // If we got a custom token, sign in with it to switch sessions
+      if (data.customToken) {
+        try {
+          const { signInWithCustomToken } = await import('firebase/auth');
+          const userCredential = await signInWithCustomToken(auth, data.customToken);
+          const idToken = await userCredential.user.getIdToken();
+          
+          // Create new session with email/password account
+          const sessionResponse = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ idToken }),
+          });
+
+          if (!sessionResponse.ok) {
+            throw new Error('Failed to create new session');
+          }
+
+          // Refresh the page with new session
+          router.refresh();
+        } catch (authError) {
+          console.error('Failed to switch session:', authError);
+          // Fallback: redirect to login
+          router.push('/login');
+        }
+      } else if (data.requiresReauth) {
+        // No custom token provided, redirect to login
         router.push('/login');
       } else {
         // Just refresh the page to show updated status

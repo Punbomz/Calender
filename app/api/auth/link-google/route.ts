@@ -181,6 +181,7 @@ export async function DELETE(request: NextRequest) {
     let uid = decodedClaims.uid;
     const signInProvider = decodedClaims.firebase?.sign_in_provider;
     const isLoggedInWithGoogle = signInProvider === "google.com";
+    let emailPasswordUid = uid;
 
     // If logged in with Google, find the linked email/password account
     if (isLoggedInWithGoogle) {
@@ -197,8 +198,8 @@ export async function DELETE(request: NextRequest) {
       if (!linkedAccountSnapshot.empty) {
         // Use the linked email/password account UID
         const linkedDoc = linkedAccountSnapshot.docs[0];
-        uid = linkedDoc.id;
-        console.log("Unlink: Found linked account, using UID:", uid);
+        emailPasswordUid = linkedDoc.id;
+        console.log("Unlink: Found linked account, using UID:", emailPasswordUid);
       } else {
         return NextResponse.json(
           { error: "No linked account found" },
@@ -208,7 +209,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Get current user data from Firestore
-    const userDoc = await adminDb.collection("users").doc(uid).get();
+    const userDoc = await adminDb.collection("users").doc(emailPasswordUid).get();
     const userData = userDoc.data() || {};
 
     // Check if Google is actually linked
@@ -229,17 +230,33 @@ export async function DELETE(request: NextRequest) {
     };
 
     // Update user in Firestore
-    await adminDb.collection("users").doc(uid).update(updateData);
+    await adminDb.collection("users").doc(emailPasswordUid).update(updateData);
 
-    // If user was logged in with Google, clear their session
-    // They will need to log in with email/password next time
+    // If user was logged in with Google, we need to create a new session with the email/password UID
     if (isLoggedInWithGoogle) {
-      cookieStore.delete("session");
-      return NextResponse.json({
-        success: true,
-        message: "Google account unlinked successfully. Please sign in with your email and password.",
-        requiresReauth: true, // Signal to frontend to redirect to login
-      });
+      try {
+        // Get the email/password user from Firebase Auth
+        const emailPasswordAuthUser = await adminAuth.getUser(emailPasswordUid);
+        
+        // Create a custom token for the email/password account
+        const customToken = await adminAuth.createCustomToken(emailPasswordUid);
+        
+        return NextResponse.json({
+          success: true,
+          message: "Google account unlinked successfully. Switching to email/password session.",
+          requiresReauth: true,
+          customToken: customToken, // Send token to frontend to create new session
+        });
+      } catch (tokenError) {
+        console.error("Error creating custom token:", tokenError);
+        // Fallback: just log them out
+        cookieStore.delete("session");
+        return NextResponse.json({
+          success: true,
+          message: "Google account unlinked successfully. Please sign in with your email and password.",
+          requiresReauth: true,
+        });
+      }
     }
 
     return NextResponse.json({
