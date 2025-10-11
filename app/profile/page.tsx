@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import GoogleLinkButton from "@/app/components/GoogleLinkButton";
 import {
   getVerifiedUserId,
@@ -7,8 +8,8 @@ import {
   getFullName,
   getEmail,
   getPhotoURL,
-  handleLogout
 } from "./profile-utils";
+import { handleLogout } from "./profile-actions";
 
 export default async function ProfilePage() {
   try {
@@ -164,7 +165,6 @@ export default async function ProfilePage() {
     );
   } catch (error) {
     console.error("Profile error:", error);
-    // The redirect will be handled by the utility functions
-    return null;
+    redirect("/login");
   }
 }

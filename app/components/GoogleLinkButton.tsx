@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -14,6 +14,11 @@ export default function GoogleLinkButton({ isLinked, userId }: GoogleLinkButtonP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+
+  // Clear error when isLinked status changes
+  useEffect(() => {
+    setError('');
+  }, [isLinked]);
 
   const handleLinkGoogle = async () => {
     setLoading(true);
@@ -73,7 +78,7 @@ export default function GoogleLinkButton({ isLinked, userId }: GoogleLinkButtonP
         throw new Error(data.error || 'Failed to unlink Google account');
       }
 
-      // Refresh the page to show updated status
+      // Just refresh the page to show updated status
       router.refresh();
       
     } catch (err: any) {

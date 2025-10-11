@@ -34,10 +34,12 @@ export async function loginUser(
 
     // Verify ID Token first
     const decodedToken = await adminAuth.verifyIdToken(idToken);
-    const uid = decodedToken.uid;
+    let uid = decodedToken.uid;
+    const tokenEmail = decodedToken.email;
 
     // Check if this is a social login (Google, etc.)
     const isSocialLogin = decodedToken.firebase?.sign_in_provider !== "password";
+    const isGoogleLogin = decodedToken.firebase?.sign_in_provider === "google.com";
 
     // Only validate email/password for non-social logins
     if (!isSocialLogin && (!email || !password)) {
@@ -45,6 +47,53 @@ export async function loginUser(
         success: false,
         error: VALIDATE_INPUT,
       };
+    }
+
+    // If this is a Google login, check if there's an existing email/password account
+    if (isGoogleLogin && tokenEmail) {
+      // First, check for currently linked accounts
+      let linkedAccountSnapshot = await adminDb
+        .collection("users")
+        .where("googleEmail", "==", tokenEmail)
+        .where("googleLinked", "==", true)
+        .limit(1)
+        .get();
+
+      if (!linkedAccountSnapshot.empty) {
+        // Found a linked account
+        const linkedDoc = linkedAccountSnapshot.docs[0];
+        uid = linkedDoc.id;
+        console.log("Google login: Found linked account, using UID:", uid);
+      } else {
+        // No linked account found, check if there's an email/password account with this email
+        // (could be an account that was previously linked but then unlinked)
+        const emailAccountSnapshot = await adminDb
+          .collection("users")
+          .where("email", "==", tokenEmail)
+          .limit(1)
+          .get();
+
+        if (!emailAccountSnapshot.empty) {
+          const emailDoc = emailAccountSnapshot.docs[0];
+          const emailData = emailDoc.data();
+          
+          // If this account was previously linked but is now unlinked, prevent Google login
+          if (emailData.googleLinked === false && emailData.googleEmail === null) {
+            console.log("Google login blocked: Account was unlinked, must use email/password");
+            return {
+              success: false,
+              error: "This Google account was unlinked. Please sign in with your email and password instead.",
+            };
+          }
+          
+          // Otherwise use the email/password account (shouldn't normally happen)
+          uid = emailDoc.id;
+          console.log("Google login: Found email/password account, using UID:", uid);
+        } else {
+          // This is a new Google user (no existing account)
+          console.log("Google login: No existing account found, new Google user");
+        }
+      }
     }
 
     // Get user data from Firestore
@@ -62,8 +111,10 @@ export async function loginUser(
         email: decodedToken.email || email,
         photoURL: photoURL,
         originalPhotoURL: photoURL, // Store original photo URL
-        googleEmail: isSocialLogin && decodedToken.firebase?.sign_in_provider === "google.com" ? decodedToken.email : null,
-        googleLinked: isSocialLogin && decodedToken.firebase?.sign_in_provider === "google.com",
+        googleEmail: isGoogleLogin ? decodedToken.email : null,
+        googleLinked: isGoogleLogin,
+        googleDisplayName: isGoogleLogin ? decodedToken.name : null,
+        googlePhotoURL: isGoogleLogin ? decodedToken.picture : null,
         lastLogin: FieldValue.serverTimestamp(),
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),

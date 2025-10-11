@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { FieldValue } from "firebase-admin/firestore";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +17,28 @@ export async function POST(request: NextRequest) {
 
     // Verify session
     const decodedClaims = await adminAuth.verifySessionCookie(session.value, true);
-    const uid = decodedClaims.uid;
+    let uid = decodedClaims.uid;
+    const signInProvider = decodedClaims.firebase?.sign_in_provider;
+
+    // IMPORTANT: If logged in with Google, find the linked email/password account
+    if (signInProvider === "google.com") {
+      const authUser = await adminAuth.getUser(uid);
+      const googleEmail = authUser.email;
+
+      // Find the email/password account that has this Google account linked
+      const linkedAccountSnapshot = await adminDb
+        .collection("users")
+        .where("googleEmail", "==", googleEmail)
+        .where("googleLinked", "==", true)
+        .get();
+
+      if (!linkedAccountSnapshot.empty) {
+        // Use the linked email/password account UID
+        const linkedDoc = linkedAccountSnapshot.docs[0];
+        uid = linkedDoc.id;
+        console.log("Link: Found linked account, using UID:", uid);
+      }
+    }
 
     // Get the Google ID token from request body
     const { idToken } = await request.json();
@@ -40,17 +62,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the current user
-    const currentUser = await adminAuth.getUser(uid);
-    
-    // Check if Google is already linked
-    const hasGoogle = currentUser.providerData.some(
-      provider => provider.providerId === "google.com"
-    );
+    // Get the Google email
+    const googleEmail = decodedToken.email;
 
-    if (hasGoogle) {
+    if (!googleEmail) {
       return NextResponse.json(
-        { error: "Google account is already linked" },
+        { error: "Google email not found" },
+        { status: 400 }
+      );
+    }
+
+    // Check if this Google email is already linked to a DIFFERENT user
+    const existingUserQuery = await adminDb
+      .collection("users")
+      .where("googleEmail", "==", googleEmail)
+      .where("googleLinked", "==", true)
+      .get();
+
+    // Check if any OTHER user (not the current user) already has this Google email linked
+    const emailAlreadyUsed = existingUserQuery.docs.some(doc => doc.id !== uid);
+
+    if (emailAlreadyUsed) {
+      return NextResponse.json(
+        { error: "This Google account is already linked to another user" },
+        { status: 400 }
+      );
+    }
+
+    // Check if the Google email matches an existing email/password account (different from current user)
+    const emailAccountQuery = await adminDb
+      .collection("users")
+      .where("email", "==", googleEmail)
+      .get();
+
+    const emailAccountExists = emailAccountQuery.docs.some(doc => doc.id !== uid);
+
+    if (emailAccountExists) {
+      return NextResponse.json(
+        { error: "This email is already registered with another account" },
         { status: 400 }
       );
     }
@@ -59,32 +108,50 @@ export async function POST(request: NextRequest) {
     const userDoc = await adminDb.collection("users").doc(uid).get();
     const currentData = userDoc.data() || {};
 
-    // Save original data before linking (for restore when unlinking)
-    const originalData = {
-      displayName: currentData.displayName || currentUser.displayName || null,
-      photoURL: currentData.photoURL || currentUser.photoURL || null,
-    };
+    // Check if Google is already linked for this user
+    if (currentData.googleLinked) {
+      return NextResponse.json(
+        { error: "Google account is already linked" },
+        { status: 400 }
+      );
+    }
 
     // Get Google info
-    const googleEmail = decodedToken.email;
     const googlePhotoURL = decodedToken.picture;
     const googleDisplayName = decodedToken.name;
 
-    // Update user in Firestore with Google info and save original data
-    await adminDb.collection("users").doc(uid).update({
+    // Prepare update data - ONLY save original data and link status
+    // DO NOT overwrite user's existing displayName and photoURL
+    const updateData: any = {
       googleLinked: true,
       googleEmail: googleEmail,
-      photoURL: googlePhotoURL || currentData.photoURL,
-      displayName: googleDisplayName || currentData.displayName,
-      // Save original data for restoration
-      originalDisplayName: originalData.displayName,
-      originalPhotoURL: originalData.photoURL,
-      updatedAt: new Date().toISOString(),
-    });
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    // Save original data ONLY if not already saved (first time linking)
+    if (!currentData.originalDisplayName && currentData.displayName) {
+      updateData.originalDisplayName = currentData.displayName;
+    }
+    if (!currentData.originalPhotoURL && currentData.photoURL) {
+      updateData.originalPhotoURL = currentData.photoURL;
+    }
+
+    // Store Google's name and photo separately for reference, but don't apply them
+    // User can manually choose to use them if they want
+    updateData.googleDisplayName = googleDisplayName || null;
+    updateData.googlePhotoURL = googlePhotoURL || null;
+
+    // Update user in Firestore (just update the current user document)
+    await adminDb.collection("users").doc(uid).update(updateData);
 
     return NextResponse.json({
       success: true,
       message: "Google account linked successfully",
+      googleInfo: {
+        displayName: googleDisplayName,
+        photoURL: googlePhotoURL,
+        email: googleEmail
+      }
     });
 
   } catch (error: any) {
@@ -92,7 +159,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: error.message || "Failed to link Google account" },
       { status: 500 }
-    );
+  );
   }
 }
 
@@ -111,37 +178,44 @@ export async function DELETE(request: NextRequest) {
 
     // Verify session
     const decodedClaims = await adminAuth.verifySessionCookie(session.value, true);
-    const uid = decodedClaims.uid;
+    let uid = decodedClaims.uid;
+    const signInProvider = decodedClaims.firebase?.sign_in_provider;
+
+    // PREVENT unlinking if logged in with Google
+    if (signInProvider === "google.com") {
+      return NextResponse.json(
+        { error: "Cannot unlink Google account while signed in with Google. Please sign in with your email and password first." },
+        { status: 400 }
+      );
+    }
 
     // Get current user data from Firestore
     const userDoc = await adminDb.collection("users").doc(uid).get();
     const userData = userDoc.data() || {};
 
-    // Prepare update data to restore original values
+    // Check if Google is actually linked
+    if (!userData.googleLinked) {
+      return NextResponse.json(
+        { error: "No Google account is linked" },
+        { status: 400 }
+      );
+    }
+
+    // Prepare update data to unlink Google
     const updateData: any = {
       googleLinked: false,
       googleEmail: null,
-      updatedAt: new Date().toISOString(),
+      googleDisplayName: null,
+      googlePhotoURL: null,
+      updatedAt: FieldValue.serverTimestamp(),
     };
-
-    // Restore original displayName if it exists
-    if (userData.originalDisplayName !== undefined) {
-      updateData.displayName = userData.originalDisplayName;
-      updateData.originalDisplayName = null; // Clear the backup
-    }
-
-    // Restore original photoURL if it exists
-    if (userData.originalPhotoURL !== undefined) {
-      updateData.photoURL = userData.originalPhotoURL;
-      updateData.originalPhotoURL = null; // Clear the backup
-    }
 
     // Update user in Firestore
     await adminDb.collection("users").doc(uid).update(updateData);
 
     return NextResponse.json({
       success: true,
-      message: "Google account unlinked successfully and original data restored",
+      message: "Google account unlinked successfully",
     });
 
   } catch (error: any) {
