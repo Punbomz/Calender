@@ -81,16 +81,22 @@ export async function registerUser(
     throw new Error("Failed to update user profile");
   }
 
-  // Save user info to Firestore
+  // Save user info to Firestore with the new template
   try {
     console.log("Saving user data to Firestore...");
     const userDocRef = doc(db, "users", user.uid);
     await setDoc(userDocRef, {
       uid: user.uid,
       displayName: displayName,
+      originalDisplayName: displayName, // Store original display name
       email: email,
       photoURL: photoURL,
+      originalPhotoURL: photoURL, // Store original photo URL
+      googleEmail: null, // No Google account linked initially
+      googleLinked: false, // Not linked to Google
+      lastLogin: serverTimestamp(),
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
       role: "user", // Default role
     });
     console.log("User data saved to Firestore successfully");
