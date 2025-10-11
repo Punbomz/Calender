@@ -10,7 +10,7 @@ import {
   LOGIN_FAILED,
   getFirebaseErrorMessage,
 } from "./loginConstant";
-import { serverTimestamp, FieldValue } from "firebase-admin/firestore";
+import { FieldValue } from "firebase-admin/firestore";
 
 interface LoginResponse {
   success: boolean;
