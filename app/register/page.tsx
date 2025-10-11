@@ -129,7 +129,7 @@ export default function RegisterPage() {
               </label>
               <input
                 type="email"
-                className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 outline-none focus:ring focus:ring-zinc-400"
+                className="w-full rounded-md border border-zinc-300 text-black bg-white px-4 py-2 outline-none focus:ring focus:ring-zinc-400"
                 placeholder="your.email@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -143,7 +143,7 @@ export default function RegisterPage() {
               </label>
               <input
                 type="password"
-                className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 outline-none focus:ring focus:ring-zinc-400"
+                className="w-full rounded-md border border-zinc-300 text-black bg-white px-4 py-2 outline-none focus:ring focus:ring-zinc-400"
                 placeholder="Min 6 chars, A-Z, a-z, 0-9"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -159,7 +159,7 @@ export default function RegisterPage() {
               </label>
               <input
                 type="password"
-                className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 outline-none focus:ring focus:ring-zinc-400"
+                className="w-full rounded-md border border-zinc-300 text-black bg-white px-4 py-2 outline-none focus:ring focus:ring-zinc-400"
                 placeholder="Retype your password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
@@ -172,7 +172,7 @@ export default function RegisterPage() {
                 Full Name
               </label>
               <input
-                className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 outline-none focus:ring focus:ring-zinc-400"
+                className="w-full rounded-md border border-zinc-300 text-black bg-white px-4 py-2 outline-none focus:ring focus:ring-zinc-400"
                 placeholder="John Doe"
                 value={fullname}
                 onChange={(e) => setFullname(e.target.value)}
@@ -196,7 +196,7 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={onPickImage}
-                className="w-full rounded-md bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white font-semibold py-3 transition"
+                className="w-full rounded-md bg-red-600 hover:cursor-pointer hover:bg-red-700 active:scale-[0.99] text-white font-semibold py-3 transition"
               >
                 Upload Profile Picture
               </button>
@@ -219,7 +219,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-36 mx-auto block rounded-md bg-amber-900 hover:bg-amber-800 text-white font-mono text-xl py-2 disabled:opacity-60 transition"
+                className="w-36 mx-auto block rounded-md bg-amber-900 hover:cursor-pointer hover:bg-amber-800 text-white font-mono text-xl py-2 disabled:opacity-60 transition"
               >
                 {submitting ? "Loading..." : "Sign Up"}
               </button>
@@ -242,7 +242,7 @@ export default function RegisterPage() {
                 type="button"
                 onClick={onGoogleLogin}
                 disabled={loading}
-                className="w-full mt-4 flex items-center justify-center gap-3 bg-white hover:bg-zinc-50 border-2 border-zinc-300 rounded-lg py-3 px-4 transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                className="w-full mt-4 flex items-center justify-center gap-3 bg-white hover:cursor-pointer hover:bg-zinc-50 border-2 border-zinc-300 rounded-lg py-3 px-4 transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path
