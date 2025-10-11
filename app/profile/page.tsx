@@ -15,17 +15,36 @@ export default async function ProfilePage() {
   try {
     // Verify session and get user data
     const decodedClaims = await adminAuth.verifySessionCookie(session.value, true);
-    const uid = decodedClaims.uid;
+    let uid = decodedClaims.uid;
 
-    // Get user data from Firestore
+    // Get user info from Firebase Auth
+    const authUser = await adminAuth.getUser(uid);
+    const signInProvider = decodedClaims.firebase?.sign_in_provider;
+
+    // If logged in with Google, check if this is a linked account
+    if (signInProvider === "google.com") {
+      const googleEmail = authUser.email;
+      
+      // Find the original email/password account that linked this Google account
+      // Search by googleEmail field instead of googleUid
+      const linkedAccountSnapshot = await adminDb
+        .collection("users")
+        .where("googleEmail", "==", googleEmail)
+        .where("googleLinked", "==", true)
+        .get();
+
+      if (!linkedAccountSnapshot.empty) {
+        // Found the linked account, use that UID instead
+        const linkedDoc = linkedAccountSnapshot.docs[0];
+        uid = linkedDoc.id;
+      }
+    }
+
+    // Get user data from Firestore (using the correct UID)
     const userDoc = await adminDb.collection("users").doc(uid).get();
     const userData = userDoc.data();
 
-    // Get user info from Firebase Auth (as fallback)
-    const authUser = await adminAuth.getUser(uid);
-
     // Check if user signed in with Google
-    const signInProvider = decodedClaims.firebase?.sign_in_provider;
     const hasGoogleProvider = authUser.providerData.some(
       provider => provider.providerId === "google.com"
     );
