@@ -1,82 +1,28 @@
-import { cookies } from "next/headers";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import GoogleLinkButton from "@/app/components/GoogleLinkButton";
+import {
+  getVerifiedUserId,
+  getUserData,
+  getDisplayName,
+  getFullName,
+  getEmail,
+  getPhotoURL,
+  handleLogout
+} from "./profile-utils";
 
 export default async function ProfilePage() {
-  const cookieStore = await cookies();
-  const session = cookieStore.get("session");
-  
-  if (!session) {
-    redirect("/login");
-  }
-
   try {
-    // Verify session and get user data
-    const decodedClaims = await adminAuth.verifySessionCookie(session.value, true);
-    let uid = decodedClaims.uid;
+    // Get verified user ID (handles account linking logic)
+    const uid = await getVerifiedUserId();
 
-    // Get user info from Firebase Auth
-    const authUser = await adminAuth.getUser(uid);
-    const signInProvider = decodedClaims.firebase?.sign_in_provider;
-
-    // If logged in with Google, check if this is a linked account
-    if (signInProvider === "google.com") {
-      const googleEmail = authUser.email;
-      
-      // Find the original email/password account that linked this Google account
-      // Search by googleEmail field instead of googleUid
-      const linkedAccountSnapshot = await adminDb
-        .collection("users")
-        .where("googleEmail", "==", googleEmail)
-        .where("googleLinked", "==", true)
-        .get();
-
-      if (!linkedAccountSnapshot.empty) {
-        // Found the linked account, use that UID instead
-        const linkedDoc = linkedAccountSnapshot.docs[0];
-        uid = linkedDoc.id;
-      }
-    }
-
-    // Get user data from Firestore (using the correct UID)
-    const userDoc = await adminDb.collection("users").doc(uid).get();
-    const userData = userDoc.data();
-
-    // Check if user signed in with Google
-    const hasGoogleProvider = authUser.providerData.some(
-      provider => provider.providerId === "google.com"
-    );
-    const isGoogleSignIn = signInProvider === "google.com" || hasGoogleProvider;
-
-    // Check if Google is linked (for non-Google sign-in users)
-    const isGoogleLinked = userData?.googleLinked || false;
-    const googleEmail = userData?.googleEmail || null;
-
-    // Helper function to get display name
-    const getDisplayName = () => {
-      return userData?.name || 
-             userData?.displayName || 
-             authUser.displayName || 
-             userData?.email?.split('@')[0] || 
-             "User";
-    };
-
-    // Helper function to get full name
-    const getFullName = () => {
-      return userData?.name || 
-             userData?.displayName || 
-             authUser.displayName || 
-             "Not set";
-    };
-
-    const handleLogout = async () => {
-      'use server';
-      const cookieStore = await cookies();
-      cookieStore.delete("session");
-      redirect("/login");
-    };
+    // Get all user data
+    const {
+      authUser,
+      userData,
+      isGoogleSignIn,
+      isGoogleLinked,
+      googleEmail
+    } = await getUserData(uid);
 
     return (
       <main className="min-h-screen bg-gray-100 flex flex-col">
@@ -95,9 +41,9 @@ export default async function ProfilePage() {
             <div className="flex items-center gap-4">
               {/* Profile Picture */}
               <div className="w-20 h-20 bg-black rounded-full flex items-center justify-center overflow-hidden">
-                {userData?.photoURL || authUser.photoURL ? (
+                {getPhotoURL(userData, authUser) ? (
                   <img
-                    src={userData?.photoURL || authUser.photoURL || ""}
+                    src={getPhotoURL(userData, authUser) || ""}
                     alt="Profile"
                     className="w-full h-full object-cover"
                   />
@@ -109,7 +55,7 @@ export default async function ProfilePage() {
               </div>
 
               <div>
-                <h2 className="text-xl font-bold">{userData?.displayName || userData?.name || authUser.displayName || userData?.email?.split('@')[0] || "User"}</h2>
+                <h2 className="text-xl font-bold">{getDisplayName(userData, authUser)}</h2>
               </div>
             </div>
 
@@ -123,12 +69,12 @@ export default async function ProfilePage() {
           <div className="bg-white rounded-lg p-6 mb-4">
             <div className="mb-4">
               <h3 className="text-lg font-bold mb-1">Fullname</h3>
-              <p className="text-gray-600">{getFullName()}</p>
+              <p className="text-gray-600">{getFullName(userData, authUser)}</p>
             </div>
 
             <div>
               <h3 className="text-lg font-bold mb-1">Email</h3>
-              <p className="text-gray-600">{userData?.email || authUser.email || "N/A"}</p>
+              <p className="text-gray-600">{getEmail(userData, authUser)}</p>
             </div>
           </div>
 
@@ -218,6 +164,7 @@ export default async function ProfilePage() {
     );
   } catch (error) {
     console.error("Profile error:", error);
-    redirect("/login");
+    // The redirect will be handled by the utility functions
+    return null;
   }
 }

@@ -10,6 +10,7 @@ import {
   LOGIN_FAILED,
   getFirebaseErrorMessage,
 } from "./loginConstant";
+import { FieldValue } from "firebase-admin/firestore";
 
 interface LoginResponse {
   success: boolean;
@@ -50,23 +51,32 @@ export async function loginUser(
     const userDoc = await adminDb.collection("users").doc(uid).get();
 
     if (!userDoc.exists) {
-      // Create user record if it doesn't exist (new user)
+      // Create user record if it doesn't exist (new user) - using the new template
+      const displayName = decodedToken.name || decodedToken.email?.split('@')[0] || "User";
+      const photoURL = decodedToken.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName.charAt(0))}&background=random`;
+      
       const userData = {
-        email: decodedToken.email,
-        name: decodedToken.name || null,
-        photoURL: decodedToken.picture || null,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-        provider: decodedToken.firebase?.sign_in_provider || "email",
         uid: uid,
+        displayName: displayName,
+        originalDisplayName: displayName, // Store original display name
+        email: decodedToken.email || email,
+        photoURL: photoURL,
+        originalPhotoURL: photoURL, // Store original photo URL
+        googleEmail: isSocialLogin && decodedToken.firebase?.sign_in_provider === "google.com" ? decodedToken.email : null,
+        googleLinked: isSocialLogin && decodedToken.firebase?.sign_in_provider === "google.com",
+        lastLogin: FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+        role: "user", // Default role
       };
       
       await adminDb.collection("users").doc(uid).set(userData);
       console.log("New user created:", uid);
     } else {
-      // Update last login for existing user
+      // Update last login and updatedAt for existing user
       await adminDb.collection("users").doc(uid).update({
-        lastLogin: new Date().toISOString(),
+        lastLogin: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       });
       console.log("Existing user logged in:", uid);
     }
