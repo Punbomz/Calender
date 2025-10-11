@@ -180,13 +180,31 @@ export async function DELETE(request: NextRequest) {
     const decodedClaims = await adminAuth.verifySessionCookie(session.value, true);
     let uid = decodedClaims.uid;
     const signInProvider = decodedClaims.firebase?.sign_in_provider;
+    const isLoggedInWithGoogle = signInProvider === "google.com";
 
-    // PREVENT unlinking if logged in with Google
-    if (signInProvider === "google.com") {
-      return NextResponse.json(
-        { error: "Cannot unlink Google account while signed in with Google. Please sign in with your email and password first." },
-        { status: 400 }
-      );
+    // If logged in with Google, find the linked email/password account
+    if (isLoggedInWithGoogle) {
+      const authUser = await adminAuth.getUser(uid);
+      const googleEmail = authUser.email;
+
+      // Find the email/password account that has this Google account linked
+      const linkedAccountSnapshot = await adminDb
+        .collection("users")
+        .where("googleEmail", "==", googleEmail)
+        .where("googleLinked", "==", true)
+        .get();
+
+      if (!linkedAccountSnapshot.empty) {
+        // Use the linked email/password account UID
+        const linkedDoc = linkedAccountSnapshot.docs[0];
+        uid = linkedDoc.id;
+        console.log("Unlink: Found linked account, using UID:", uid);
+      } else {
+        return NextResponse.json(
+          { error: "No linked account found" },
+          { status: 400 }
+        );
+      }
     }
 
     // Get current user data from Firestore
@@ -213,9 +231,21 @@ export async function DELETE(request: NextRequest) {
     // Update user in Firestore
     await adminDb.collection("users").doc(uid).update(updateData);
 
+    // If user was logged in with Google, clear their session
+    // They will need to log in with email/password next time
+    if (isLoggedInWithGoogle) {
+      cookieStore.delete("session");
+      return NextResponse.json({
+        success: true,
+        message: "Google account unlinked successfully. Please sign in with your email and password.",
+        requiresReauth: true, // Signal to frontend to redirect to login
+      });
+    }
+
     return NextResponse.json({
       success: true,
       message: "Google account unlinked successfully",
+      requiresReauth: false,
     });
 
   } catch (error: any) {

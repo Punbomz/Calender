@@ -60,7 +60,7 @@ export default function GoogleLinkButton({ isLinked, userId }: GoogleLinkButtonP
   };
 
   const handleUnlinkGoogle = async () => {
-    if (!confirm('Are you sure you want to unlink your Google account?')) {
+    if (!confirm('Are you sure you want to unlink your Google account? If you are signed in with Google, you will be logged out.')) {
       return;
     }
 
@@ -78,8 +78,13 @@ export default function GoogleLinkButton({ isLinked, userId }: GoogleLinkButtonP
         throw new Error(data.error || 'Failed to unlink Google account');
       }
 
-      // Just refresh the page to show updated status
-      router.refresh();
+      // If the API indicates re-authentication is required, redirect to login
+      if (data.requiresReauth) {
+        router.push('/login');
+      } else {
+        // Just refresh the page to show updated status
+        router.refresh();
+      }
       
     } catch (err: any) {
       console.error('Unlink Google error:', err);
