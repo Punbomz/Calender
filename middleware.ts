@@ -28,9 +28,17 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Redirect to profile if already logged in and trying to access register
+  if (pathname === "/register") {
+    if (session) {
+      console.log("Already logged in, redirecting to profile");
+      return NextResponse.redirect(new URL("/profile", request.url));
+    }
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/profile/:path*", "/login"],
+  matcher: ["/profile/:path*", "/login", "/register"],
 };
