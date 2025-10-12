@@ -144,7 +144,8 @@ export default async function ProfilePage() {
           <form action={handleLogout}>
             <button
               type="submit"
-              className="w-full bg-red-900 hover:bg-red-800 transition-colors text-white rounded-lg p-4 font-semibold"
+              className="w-full bg-[#6a423a] hover:bg-[#593831] transition-colors text-white rounded-lg p-4 font-semibold"
+
             >
               Log out
             </button>
