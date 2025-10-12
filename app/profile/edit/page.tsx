@@ -1,207 +1,134 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const [uid, setUid] = useState<string>("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // ✅ form state — แยก field ชัดเจน
   const [form, setForm] = useState({
-    displayName: "",
-    fullname: "",
+    fullName: "",
     photoURL: "",
   });
 
-  // ----------------------------
-  // STEP 1: verify uid
-  // ----------------------------
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/auth/verify");
-        const data = await res.json();
-        if (!data?.success || !data?.uid) {
-          router.replace("/login");
-          return;
-        }
-
-        setUid(data.uid);
-
-        // ✅ STEP 2: preload profile data
-        const profileRes = await fetch(`/api/profile?uid=${data.uid}`);
-        if (profileRes.ok) {
-          const p = await profileRes.json();
-          setForm({
-            displayName: p.displayName ?? "",
-            fullname: p.fullname ?? "",
-            photoURL: p.photoURL ?? "",
-          });
-        }
-      } catch (err) {
-        console.error("Error verifying user:", err);
-        router.replace("/login");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [router]);
-
-  // ----------------------------
-  // STEP 3: update handlers
-  // ----------------------------
-  const handleDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((prev) => ({ ...prev, displayName: e.target.value }));
-
-  const handleFullnameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((prev) => ({ ...prev, fullname: e.target.value }));
-
-  const handlePhotoClick = () => {
-    const link = prompt("ใส่ลิงก์รูปโปรไฟล์ (https://...)");
-    if (link) setForm((prev) => ({ ...prev, photoURL: link }));
+  // ✅ เมื่อแก้ Fullname
+  const handleFullNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, fullName: e.target.value });
   };
 
-  // optional file upload (local preview)
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const localURL = URL.createObjectURL(f);
-    setForm((prev) => ({ ...prev, photoURL: localURL }));
-  };
-
-  // ----------------------------
-  // STEP 4: submit update
-  // ----------------------------
+  // ✅ ฟังก์ชันบันทึกข้อมูล
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uid) return;
-    setSaving(true);
 
-    try {
-      const res = await fetch("/api/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          uid,
-          displayName: form.displayName,
-          fullname: form.fullname,
-          photoURL: form.photoURL,
-        }),
-      });
+    await fetch("/api/profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        uid: "cWFO4h8PCGhkOHIxIcP4qYgCrUg1", // 🔧 (ภายหลังจะดึงจาก verify API)
+        displayName: form.fullName,
+        fullName: form.fullName,
+        photoURL: form.photoURL,
+      }),
+    });
 
-      if (!res.ok) throw new Error((await res.json()).error || "Update failed");
+    alert("✅ Profile updated successfully!");
+    router.push("/profile"); // ✅ กลับไปหน้าโปรไฟล์
+  };
 
-      alert("✅ Profile updated successfully!");
+  // ✅ ปุ่มออก (กลับโดยไม่บันทึก)
+  const handleCancel = () => {
+    if (confirm("Discard changes and return to profile?")) {
       router.push("/profile");
-    } catch (err) {
-      console.error("Error updating profile:", err);
-      alert("❌ Failed to update profile");
-    } finally {
-      setSaving(false);
     }
   };
 
-  if (loading)
-    return (
-      <main className="min-h-screen bg-gray-300 flex items-center justify-center">
-        <div className="text-gray-700">Loading...</div>
-      </main>
-    );
-
-  // ----------------------------
-  // STEP 5: render UI (Figma style)
-  // ----------------------------
   return (
-    <main className="min-h-screen bg-gray-300 flex items-center justify-center">
-      <div className="w-[360px] bg-gray-200 rounded-lg overflow-hidden shadow-md">
-        <div className="bg-black text-white text-center py-4">
-          <h1 className="text-xl font-bold">Edit Profile</h1>
-        </div>
+    <main className="flex flex-col items-center justify-center min-h-screen bg-gray-100 px-4 py-10">
+      <div
+        className="
+        bg-white rounded-2xl shadow-lg 
+        p-6 sm:p-8 md:p-10
+        w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl
+        text-center
+        transition-all duration-300
+      "
+      >
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-900">
+          Edit Profile
+        </h1>
 
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col items-center">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           {/* Avatar */}
-          <div className="w-24 h-24 rounded-full bg-gray-400 flex items-center justify-center mb-2 overflow-hidden">
-            {form.photoURL ? (
-              <img
-                src={form.photoURL}
-                alt="avatar"
-                className="w-24 h-24 object-cover"
-              />
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-12 w-12 text-white"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z" />
-              </svg>
-            )}
-          </div>
+          <div className="flex flex-col items-center mb-4">
+            <div
+              className="
+              w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32
+              rounded-full bg-gray-300 flex items-center justify-center overflow-hidden
+            "
+            >
+              {form.photoURL ? (
+                <img
+                  src={form.photoURL}
+                  alt="avatar"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <svg
+                  className="w-12 h-12 text-white sm:w-14 sm:h-14"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                </svg>
+              )}
+            </div>
 
-          <button
-            type="button"
-            onClick={handlePhotoClick}
-            className="bg-gray-400 text-xs text-white px-3 py-1 rounded-full mb-6 hover:bg-gray-500"
-          >
-            upload photo
-          </button>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-
-          {/* Username */}
-          <div className="w-full mb-3">
-            <label className="block text-sm font-bold mb-1 text-gray-800">
-              Username
-            </label>
-            <input
-              type="text"
-              placeholder="Username"
-              value={form.displayName}
-              onChange={handleDisplayNameChange}
-              className="w-full p-2 rounded-md border border-gray-400 focus:outline-none bg-white"
-            />
+            <button
+              type="button"
+              className="text-sm mt-3 text-gray-500 hover:text-black transition"
+            >
+              Upload Photo
+            </button>
           </div>
 
           {/* Fullname */}
-          <div className="w-full mb-6">
-            <label className="block text-sm font-bold mb-1 text-gray-800">
+          <div className="text-left">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
               Fullname
             </label>
             <input
               type="text"
-              placeholder="Fullname"
-              value={form.fullname}
-              onChange={handleFullnameChange}
-              className="w-full p-2 rounded-md border border-gray-400 focus:outline-none bg-white"
+              value={form.fullName}
+              onChange={handleFullNameChange}
+              className="
+                border border-gray-300 focus:border-black focus:ring-1 focus:ring-black
+                p-2.5 rounded-md w-full text-gray-800
+                transition
+              "
+              placeholder="Enter your full name"
             />
           </div>
 
           {/* Buttons */}
-          <div className="flex w-full justify-between">
-            <button
-              type="button"
-              onClick={() => router.push("/profile")}
-              className="bg-white border border-black text-black font-bold py-2 px-4 rounded-lg hover:bg-gray-100"
-            >
-              Cancel
-            </button>
+          <div className="flex flex-col sm:flex-row justify-center gap-3 mt-5">
             <button
               type="submit"
-              disabled={saving}
-              className="bg-black text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-800 disabled:opacity-50"
+              className="
+                flex-1 bg-black text-white py-2.5 rounded-lg 
+                hover:bg-gray-800 transition font-semibold
+              "
             >
-              {saving ? "Saving..." : "Save"}
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="
+                flex-1 bg-gray-300 text-gray-800 py-2.5 rounded-lg 
+                hover:bg-gray-400 transition font-semibold
+              "
+            >
+              Cancel
             </button>
           </div>
         </form>
