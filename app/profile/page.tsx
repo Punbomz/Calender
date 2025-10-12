@@ -61,7 +61,7 @@ export default async function ProfilePage() {
             </div>
 
             {/* Arrow */}
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </Link>
@@ -69,19 +69,20 @@ export default async function ProfilePage() {
           {/* Info Display */}
           <div className="bg-white rounded-lg p-6 mb-4">
             <div className="mb-4">
-              <h3 className="text-lg font-bold mb-1">Fullname</h3>
-              <p className="text-gray-600">{getFullName(userData, authUser)}</p>
+              <h3 className="text-lg font-bold mb-1 text-black">Fullname</h3>
+
+              <p className="text-gray-700">{getFullName(userData, authUser)}</p>
             </div>
 
             <div>
-              <h3 className="text-lg font-bold mb-1">Email</h3>
-              <p className="text-gray-600">{getEmail(userData, authUser)}</p>
+              <h3 className="text-lg font-bold mb-1 text-black">Email</h3>
+              <p className="text-gray-700">{getEmail(userData, authUser)}</p>
             </div>
           </div>
 
           {/* Google Account Linking Section */}
           <div className="rounded-lg p-6 mb-4 bg-white">
-            <h3 className="text-lg font-bold mb-3">Account Linking</h3>
+            <h3 className="text-lg font-bold mb-3 text-black">Account Linking</h3>
             
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -98,13 +99,13 @@ export default async function ProfilePage() {
                 <div>
                   <p className="font-semibold">Google Account</p>
                   {isGoogleSignIn && (
-                    <p className="text-sm text-gray-500">Signed in with Google</p>
+                    <p className="text-sm text-gray-700">Signed in with Google</p>
                   )}
                   {!isGoogleSignIn && isGoogleLinked && googleEmail && (
-                    <p className="text-sm text-gray-500">{googleEmail}</p>
+                    <p className="text-sm text-gray-700">{googleEmail}</p>
                   )}
                   {!isGoogleSignIn && !isGoogleLinked && (
-                    <p className="text-sm text-gray-500">Not linked</p>
+                    <p className="text-sm text-gray-700">Not linked</p>
                   )}
                 </div>
               </div>
