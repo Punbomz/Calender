@@ -17,6 +17,9 @@ export function middleware(request: NextRequest) {
       console.log("No session found, redirecting to login");
       return NextResponse.redirect(new URL("/login", request.url));
     }
+    if(pathname === "/profile/edit"){
+      return NextResponse.next();
+    }
     console.log("Session found, allowing access to profile");
   }
 
