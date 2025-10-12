@@ -1,97 +1,163 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
+  const [uid, setUid] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // ✅ form state — แยก field ชัดเจน
+  const [form, setForm] = useState({
     displayName: "",
     fullname: "",
     photoURL: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  // ----------------------------
+  // STEP 1: verify uid
+  // ----------------------------
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/verify");
+        const data = await res.json();
+        if (!data?.success || !data?.uid) {
+          router.replace("/login");
+          return;
+        }
+
+        setUid(data.uid);
+
+        // ✅ STEP 2: preload profile data
+        const profileRes = await fetch(`/api/profile?uid=${data.uid}`);
+        if (profileRes.ok) {
+          const p = await profileRes.json();
+          setForm({
+            displayName: p.displayName ?? "",
+            fullname: p.fullname ?? "",
+            photoURL: p.photoURL ?? "",
+          });
+        }
+      } catch (err) {
+        console.error("Error verifying user:", err);
+        router.replace("/login");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [router]);
+
+  // ----------------------------
+  // STEP 3: update handlers
+  // ----------------------------
+  const handleDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((prev) => ({ ...prev, displayName: e.target.value }));
+
+  const handleFullnameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((prev) => ({ ...prev, fullname: e.target.value }));
+
+  const handlePhotoClick = () => {
+    const link = prompt("ใส่ลิงก์รูปโปรไฟล์ (https://...)");
+    if (link) setForm((prev) => ({ ...prev, photoURL: link }));
   };
 
-  // 📤 อัปโหลดหรือบันทึกผ่าน API
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  // optional file upload (local preview)
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const localURL = URL.createObjectURL(f);
+    setForm((prev) => ({ ...prev, photoURL: localURL }));
+  };
+
+  // ----------------------------
+  // STEP 4: submit update
+  // ----------------------------
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!uid) return;
+    setSaving(true);
+
     try {
       const res = await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          uid: "USER_ID_HERE", // ✅ แทนด้วย uid จริง (หรือ auth.currentUser.uid)
-          displayName: formData.displayName,
-          fullname: formData.fullname,
-          photoURL: formData.photoURL,
+          uid,
+          displayName: form.displayName,
+          fullname: form.fullname,
+          photoURL: form.photoURL,
         }),
       });
 
-      if (res.ok) {
-        alert("✅ Profile updated successfully!");
-        router.push("/profile");
-      } else {
-        const err = await res.json();
-        alert("❌ " + err.error);
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Something went wrong!");
+      if (!res.ok) throw new Error((await res.json()).error || "Update failed");
+
+      alert("✅ Profile updated successfully!");
+      router.push("/profile");
+    } catch (err) {
+      console.error("Error updating profile:", err);
+      alert("❌ Failed to update profile");
+    } finally {
+      setSaving(false);
     }
   };
 
-  // 📸 (ยังไม่เชื่อมอัปโหลดไฟล์จริง — mock ไว้ก่อน)
-  const handlePhotoUpload = () => {
-    const url = prompt("Enter photo URL:");
-    if (url) setFormData({ ...formData, photoURL: url });
-  };
+  if (loading)
+    return (
+      <main className="min-h-screen bg-gray-300 flex items-center justify-center">
+        <div className="text-gray-700">Loading...</div>
+      </main>
+    );
 
+  // ----------------------------
+  // STEP 5: render UI (Figma style)
+  // ----------------------------
   return (
-    <main className="min-h-screen bg-gray-300 flex flex-col items-center justify-center">
-      <div className="w-80 bg-gray-200 rounded-lg overflow-hidden shadow-md">
-        {/* Header */}
+    <main className="min-h-screen bg-gray-300 flex items-center justify-center">
+      <div className="w-[360px] bg-gray-200 rounded-lg overflow-hidden shadow-md">
         <div className="bg-black text-white text-center py-4">
           <h1 className="text-xl font-bold">Edit Profile</h1>
         </div>
 
-        {/* Content */}
         <form onSubmit={handleSubmit} className="p-6 flex flex-col items-center">
-          {/* Profile Photo */}
-          <div className="w-24 h-24 rounded-full bg-gray-400 flex items-center justify-center mb-2">
-            {formData.photoURL ? (
+          {/* Avatar */}
+          <div className="w-24 h-24 rounded-full bg-gray-400 flex items-center justify-center mb-2 overflow-hidden">
+            {form.photoURL ? (
               <img
-                src={formData.photoURL}
-                alt="Profile"
-                className="w-24 h-24 rounded-full object-cover"
+                src={form.photoURL}
+                alt="avatar"
+                className="w-24 h-24 object-cover"
               />
             ) : (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-12 w-12 text-white"
-                fill="none"
+                fill="currentColor"
                 viewBox="0 0 24 24"
-                stroke="currentColor"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5.121 17.804A9 9 0 1118.364 4.56M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                />
+                <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z" />
               </svg>
             )}
           </div>
 
           <button
             type="button"
-            onClick={handlePhotoUpload}
-            className="bg-gray-400 text-sm text-white px-3 py-1 rounded-full mb-4 hover:bg-gray-500"
+            onClick={handlePhotoClick}
+            className="bg-gray-400 text-xs text-white px-3 py-1 rounded-full mb-6 hover:bg-gray-500"
           >
             upload photo
           </button>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
 
           {/* Username */}
           <div className="w-full mb-3">
@@ -100,11 +166,10 @@ export default function EditProfilePage() {
             </label>
             <input
               type="text"
-              name="displayName"
               placeholder="Username"
-              value={formData.displayName}
-              onChange={handleChange}
-              className="w-full p-2 rounded-md border border-gray-400 focus:outline-none"
+              value={form.displayName}
+              onChange={handleDisplayNameChange}
+              className="w-full p-2 rounded-md border border-gray-400 focus:outline-none bg-white"
             />
           </div>
 
@@ -115,11 +180,10 @@ export default function EditProfilePage() {
             </label>
             <input
               type="text"
-              name="fullname"
               placeholder="Fullname"
-              value={formData.fullname}
-              onChange={handleChange}
-              className="w-full p-2 rounded-md border border-gray-400 focus:outline-none"
+              value={form.fullname}
+              onChange={handleFullnameChange}
+              className="w-full p-2 rounded-md border border-gray-400 focus:outline-none bg-white"
             />
           </div>
 
@@ -134,9 +198,10 @@ export default function EditProfilePage() {
             </button>
             <button
               type="submit"
-              className="bg-black text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-800"
+              disabled={saving}
+              className="bg-black text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-800 disabled:opacity-50"
             >
-              Save
+              {saving ? "Saving..." : "Save"}
             </button>
           </div>
         </form>
@@ -144,6 +209,8 @@ export default function EditProfilePage() {
     </main>
   );
 }
+
+
 
 
 

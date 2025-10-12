@@ -1,40 +1,26 @@
-// middleware.ts (in project root)
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+// ✅ Edge runtime ไม่รองรับ process หรือ firebase-admin
+// ดังนั้น middleware นี้จะเช็กเฉพาะ cookie เท่านั้น
 export function middleware(request: NextRequest) {
-  const session = request.cookies.get("session");
+  const sessionCookie = request.cookies.get("session")?.value;
   const { pathname } = request.nextUrl;
 
-  console.log("Middleware check:", {
-    path: pathname,
-    hasSession: !!session,
-  });
+  console.log("🔍 Middleware check:", { path: pathname, hasSession: !!sessionCookie });
 
-  // Protect /profile route - redirect to login if no session
+  // ✅ ป้องกันเข้าหน้า profile โดยไม่มี session
   if (pathname.startsWith("/profile")) {
-    if (!session) {
-      console.log("No session found, redirecting to login");
+    if (!sessionCookie) {
+      console.log("❌ No session cookie found, redirecting to /login");
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    if(pathname === "/profile/edit"){
-      return NextResponse.next();
-    }
-    console.log("Session found, allowing access to profile");
   }
 
-  // Redirect to profile if already logged in and trying to access login
-  if (pathname === "/login") {
-    if (session) {
-      console.log("Already logged in, redirecting to profile");
-      return NextResponse.redirect(new URL("/profile", request.url));
-    }
-  }
-
-  // Redirect to profile if already logged in and trying to access register
-  if (pathname === "/register") {
-    if (session) {
-      console.log("Already logged in, redirecting to profile");
+  // ✅ ถ้าล็อกอินแล้ว ห้ามเข้าหน้า login/register
+  if (["/login", "/register"].includes(pathname)) {
+    if (sessionCookie) {
+      console.log("🔁 Already logged in → redirect to /profile");
       return NextResponse.redirect(new URL("/profile", request.url));
     }
   }
