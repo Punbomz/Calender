@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 /**
- * Verifies the session and returns the user's UID
- * If logged in with Google and account is linked, returns the original email/password account UID
+ * ✅ ตรวจสอบ session แล้วคืนค่า UID ของผู้ใช้ที่ล็อกอิน
+ * - ถ้า login ด้วย Google และมีการเชื่อมบัญชีไว้ → คืน UID ของบัญชีหลัก (email/password)
  */
 export async function getVerifiedUserId(): Promise<string> {
   try {
@@ -12,33 +12,31 @@ export async function getVerifiedUserId(): Promise<string> {
     const session = cookieStore.get("session");
     
     if (!session) {
-      console.log("No session found, redirecting to login");
+      console.log("No session found → redirect to login");
       redirect("/login");
     }
 
-    console.log("Verifying session cookie...");
-    // Verify session and get user data
+    console.log("🔍 Verifying session cookie...");
     const decodedClaims = await adminAuth.verifySessionCookie(session.value, true);
     let uid = decodedClaims.uid;
-    console.log("Session verified for UID:", uid);
+    console.log("✅ Session verified for UID:", uid);
 
-    // Get user info from Firebase Auth
     const authUser = await adminAuth.getUser(uid);
     const signInProvider = decodedClaims.firebase?.sign_in_provider;
     console.log("Sign-in provider:", signInProvider);
 
-    // If logged in with Google, check if this is a linked account
+    // 🧩 ถ้า login ด้วย Google → ตรวจสอบว่ามีบัญชีที่ link อยู่ไหม
     if (signInProvider === "google.com") {
-      const googleEmail = authUser.email?.toLowerCase(); // Normalize email
-      console.log("Google sign-in detected, checking for linked account with email:", googleEmail);
-      
+      const googleEmail = authUser.email?.toLowerCase();
+      console.log("Google sign-in detected:", googleEmail);
+
       if (!googleEmail) {
         console.log("No email found in Google auth user");
         cookieStore.delete("session");
         redirect("/login");
       }
-      
-      // Try to find account by googleEmail field first (currently linked)
+
+      // 🔎 หา user จาก googleEmail ก่อน
       let linkedAccountSnapshot = await adminDb
         .collection("users")
         .where("googleEmail", "==", googleEmail)
@@ -47,12 +45,11 @@ export async function getVerifiedUserId(): Promise<string> {
         .get();
 
       if (!linkedAccountSnapshot.empty) {
-        // Found a linked account
         const linkedDoc = linkedAccountSnapshot.docs[0];
         uid = linkedDoc.id;
-        console.log("Found linked account by googleEmail, using UID:", uid);
+        console.log("✅ Found linked account via googleEmail:", uid);
       } else {
-        // Not found by googleEmail, try searching by email field
+        // ลองหาอีกรอบจาก email ปกติ
         linkedAccountSnapshot = await adminDb
           .collection("users")
           .where("email", "==", googleEmail)
@@ -62,45 +59,30 @@ export async function getVerifiedUserId(): Promise<string> {
         if (!linkedAccountSnapshot.empty) {
           const linkedDoc = linkedAccountSnapshot.docs[0];
           const linkedData = linkedDoc.data();
-          
-          console.log("Found account by email field:", {
-            uid: linkedDoc.id,
-            googleLinked: linkedData.googleLinked,
-            googleEmail: linkedData.googleEmail
-          });
-          
-          // If the account was unlinked AND user is logged in via Google auth, redirect
-          // This prevents Google-authenticated users from accessing an unlinked account
-          if (linkedData.googleLinked === false && uid !== linkedDoc.id) {
-            console.log("Google account was unlinked and user is authenticated via Google, redirecting");
+
+          if (linkedData.googleLinked === true && linkedData.googleEmail) {
+            uid = linkedDoc.id;
+            console.log("✅ Found linked account via email:", uid);
+          } else {
+            console.log("⚠️ Google account not linked, redirecting...");
             cookieStore.delete("session");
             redirect("/login");
           }
-          
-          // If still linked, use the email/password UID
-          if (linkedData.googleLinked === true && linkedData.googleEmail) {
-            uid = linkedDoc.id;
-            console.log("Found linked account by email, using UID:", uid);
-          }
         } else {
-          console.log("No linked account found by email, using Google UID:", uid);
+          console.log("No linked account found → using Google UID:", uid);
         }
       }
     }
 
     return uid;
   } catch (error: any) {
-    console.error("Error in getVerifiedUserId:", {
-      message: error.message,
-      code: error.code,
-      stack: error.stack
-    });
+    console.error("❌ Error in getVerifiedUserId:", error);
     throw error;
   }
 }
 
 /**
- * Gets complete user data from both Firebase Auth and Firestore
+ * ✅ ดึงข้อมูลผู้ใช้ทั้งจาก Firebase Auth และ Firestore
  */
 export async function getUserData(uid: string) {
   try {
@@ -108,44 +90,29 @@ export async function getUserData(uid: string) {
     const session = cookieStore.get("session");
     
     if (!session) {
-      console.log("No session in getUserData");
+      console.log("No session found → redirect to login");
       redirect("/login");
     }
 
-    console.log("Getting user data for UID:", uid);
+    console.log("📦 Getting user data for UID:", uid);
     const decodedClaims = await adminAuth.verifySessionCookie(session.value, true);
     const signInProvider = decodedClaims.firebase?.sign_in_provider;
     const tokenUid = decodedClaims.uid;
 
-    // Get user info from Firebase Auth
+    // 🔸 ดึงข้อมูลจาก Firebase Auth
     const authUser = await adminAuth.getUser(uid);
     console.log("Got auth user:", authUser.uid);
 
-    // Get user data from Firestore
+    // 🔸 ดึงข้อมูลจาก Firestore
     const userDoc = await adminDb.collection("users").doc(uid).get();
-    
-    if (!userDoc.exists) {
-      console.error("User document not found in Firestore for UID:", uid);
-      throw new Error("User data not found");
-    }
-    
+    if (!userDoc.exists) throw new Error("User data not found in Firestore");
     const userData = userDoc.data();
     console.log("Got user data from Firestore");
 
-    // IMPORTANT: Determine if this is truly a Google-only sign-in
-    // If the token UID is different from the profile UID, it means:
-    // - User logged in with Google (tokenUid = Google UID)
-    // - But we're showing linked email/password account (uid = email/password UID)
-    // In this case, it's a LINKED account, not a pure Google sign-in
+    // 🔎 ตรวจสอบสถานะการเชื่อมบัญชี
     const isLinkedAccountSession = signInProvider === "google.com" && tokenUid !== uid;
-    
-    // Check if Google is linked (from Firestore data)
     const isGoogleLinked = userData?.googleLinked || false;
     const googleEmail = userData?.googleEmail || null;
-
-    // isGoogleSignIn should only be true if:
-    // 1. User signed in with Google AND
-    // 2. This is NOT a linked account session (they're using pure Google account)
     const isGoogleSignIn = signInProvider === "google.com" && !isLinkedAccountSession;
 
     console.log("Auth check:", {
@@ -154,7 +121,7 @@ export async function getUserData(uid: string) {
       profileUid: uid,
       isLinkedAccountSession,
       isGoogleSignIn,
-      isGoogleLinked
+      isGoogleLinked,
     });
 
     return {
@@ -163,58 +130,68 @@ export async function getUserData(uid: string) {
       isGoogleSignIn,
       isGoogleLinked,
       googleEmail,
-      signInProvider
+      signInProvider,
     };
   } catch (error: any) {
-    console.error("Error in getUserData:", {
-      message: error.message,
-      code: error.code,
-      stack: error.stack
-    });
+    console.error("❌ Error in getUserData:", error);
     throw error;
   }
 }
 
+/* ============================================================
+   ✅ Utility Functions (DisplayName / Fullname / Email / Photo)
+   ============================================================ */
+
 /**
- * Gets display name for the user
+ * Username → ใช้ displayName จาก Firestore ก่อน
  */
 export function getDisplayName(userData: any, authUser: any): string {
-  return userData?.name || 
-         userData?.displayName || 
-         authUser.displayName || 
-         userData?.email?.split('@')[0] || 
-         "User";
+  const result =
+    userData?.displayName ||
+    authUser?.displayName ||
+    userData?.fullname ||
+    userData?.email?.split("@")[0] ||
+    "User";
+
+  console.log("🪪 getDisplayName →", result);
+  return result;
 }
 
 /**
- * Gets full name for the user
+ * Fullname → ใช้ fullname จาก Firestore ก่อน
  */
 export function getFullName(userData: any, authUser: any): string {
-  return userData?.name || 
-         userData?.displayName || 
-         authUser.displayName || 
-         "Not set";
+  const result =
+    userData?.fullname ||
+    userData?.displayName ||
+    authUser?.displayName ||
+    "";
+
+  console.log("👤 getFullName →", result);
+  return result;
 }
 
 /**
- * Gets email for the user
+ * Email → ดึงจาก Firestore ก่อน ถ้าไม่มีใช้ของ Auth
  */
 export function getEmail(userData: any, authUser: any): string {
-  return userData?.email || authUser.email || "N/A";
+  const result = userData?.email || authUser?.email || "N/A";
+  return result;
 }
 
 /**
- * Gets photo URL for the user
+ * Photo → ดึงจาก Firestore ก่อน ถ้าไม่มีใช้ของ Auth
  */
 export function getPhotoURL(userData: any, authUser: any): string | null {
-  return userData?.photoURL || authUser.photoURL || null;
+  const result = userData?.photoURL || authUser?.photoURL || null;
+  return result;
 }
 
 /**
- * Handles user logout
+ * Logout → ลบ session cookie แล้ว redirect ไป /login
  */
 export async function handleLogout() {
-  'use server';
+  "use server";
   const cookieStore = await cookies();
   cookieStore.delete("session");
   redirect("/login");
