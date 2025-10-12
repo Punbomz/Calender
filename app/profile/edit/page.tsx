@@ -58,7 +58,10 @@ export default function EditProfilePage() {
         </div>
 
         {/* Content */}
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col items-center">
+        <form
+          onSubmit={handleSubmit}
+          className="p-6 flex flex-col items-center"
+        >
           {/* Profile Photo */}
           <div className="w-24 h-24 rounded-full bg-gray-400 flex items-center justify-center mb-2">
             {formData.photoURL ? (
@@ -104,7 +107,7 @@ export default function EditProfilePage() {
               placeholder="Username"
               value={formData.displayName}
               onChange={handleChange}
-              className="w-full p-2 rounded-md border border-gray-400 focus:outline-none"
+              className="w-full p-2 rounded-md border border-gray-400 focus:outline-none text-black"
             />
           </div>
 
@@ -119,7 +122,7 @@ export default function EditProfilePage() {
               placeholder="Fullname"
               value={formData.fullname}
               onChange={handleChange}
-              className="w-full p-2 rounded-md border border-gray-400 focus:outline-none"
+              className="w-full p-2 rounded-md border border-gray-400 focus:outline-none text-black"
             />
           </div>
 
@@ -144,9 +147,3 @@ export default function EditProfilePage() {
     </main>
   );
 }
-
-
-
-
-
-
