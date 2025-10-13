@@ -116,10 +116,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get Google info
-    const googlePhotoURL = decodedToken.picture;
-    const googleDisplayName = decodedToken.name;
-
     // Prepare update data - ONLY save original data and link status
     // DO NOT overwrite user's existing displayName and photoURL
     const updateData: any = {
@@ -128,19 +124,6 @@ export async function POST(request: NextRequest) {
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    // Save original data ONLY if not already saved (first time linking)
-    if (!currentData.originalDisplayName && currentData.displayName) {
-      updateData.originalDisplayName = currentData.displayName;
-    }
-    if (!currentData.originalPhotoURL && currentData.photoURL) {
-      updateData.originalPhotoURL = currentData.photoURL;
-    }
-
-    // Store Google's name and photo separately for reference, but don't apply them
-    // User can manually choose to use them if they want
-    updateData.googleDisplayName = googleDisplayName || null;
-    updateData.googlePhotoURL = googlePhotoURL || null;
-
     // Update user in Firestore (just update the current user document)
     await adminDb.collection("users").doc(uid).update(updateData);
 
@@ -148,8 +131,6 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "Google account linked successfully",
       googleInfo: {
-        displayName: googleDisplayName,
-        photoURL: googlePhotoURL,
         email: googleEmail
       }
     });
@@ -224,8 +205,6 @@ export async function DELETE(request: NextRequest) {
     const updateData: any = {
       googleLinked: false,
       googleEmail: null,
-      googleDisplayName: null,
-      googlePhotoURL: null,
       updatedAt: FieldValue.serverTimestamp(),
     };
 

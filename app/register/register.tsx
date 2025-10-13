@@ -88,10 +88,8 @@ export async function registerUser(
     await setDoc(userDocRef, {
       uid: user.uid,
       displayName: displayName,
-      originalDisplayName: displayName, // Store original display name
       email: email,
       photoURL: photoURL,
-      originalPhotoURL: photoURL, // Store original photo URL
       googleEmail: null, // No Google account linked initially
       googleLinked: false, // Not linked to Google
       lastLogin: serverTimestamp(),
