@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth } from '@/lib/firebaseClient';
 import { useRouter } from 'next/navigation';
 
 interface GoogleLinkButtonProps {
