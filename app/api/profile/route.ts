@@ -1,48 +1,113 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb, adminAuth } from "@/lib/firebaseAdmin";
 
-// ✅ ดึงข้อมูล user ตาม uid
-export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const uid = searchParams.get("uid");
-    if (!uid) return NextResponse.json({ error: "Missing UID" }, { status: 400 });
-
-    const doc = await adminDb.collection("users").doc(uid).get();
-    if (!doc.exists) {
-      return NextResponse.json({ message: "User not found" }, { status: 404 });
-    }
-
-    return NextResponse.json(doc.data());
-  } catch (error: any) {
-    console.error("GET /api/profile error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-
-// ✅ อัปเดตข้อมูล user
 export async function POST(req: Request) {
   try {
-    const { uid, displayName, fullname, photoURL } = await req.json();
-    if (!uid)
-      return NextResponse.json({ error: "Missing UID" }, { status: 400 });
+    const { uid, displayName, photoURL } = await req.json();
+    if (!uid) {
+      return new Response(JSON.stringify({ error: "Missing UID" }), { status: 400 });
+    }
 
-    const userRef = adminDb.collection("users").doc(uid);
-    await userRef.set(
-      {
-        displayName: displayName ?? null,
-        fullname: fullname ?? null,
-        photoURL: photoURL ?? null,
+    let targetUid = uid;
+
+    // 1️⃣ Check if this UID exists in Firestore
+    const existingDoc = await adminDb.collection("users").doc(uid).get();
+
+    if (!existingDoc.exists) {
+      // 2️⃣ Try to get the user email from Firebase Auth
+      const firebaseUser = await adminAuth.getUser(uid).catch(() => null);
+      const email = firebaseUser?.email;
+
+      // 3️⃣ Find linked account with this email
+      if (email) {
+        const linkedSnap = await adminDb
+          .collection("users")
+          .where("googleEmail", "==", email)
+          .limit(1)
+          .get();
+
+        if (!linkedSnap.empty) {
+          targetUid = linkedSnap.docs[0].id; // ✅ Use the existing linked UID
+        }
+      }
+    }
+
+    // 4️⃣ Now update or create on the correct UID
+    const userRef = adminDb.collection("users").doc(targetUid);
+    const userDoc = await userRef.get();
+
+    if (userDoc.exists) {
+      await userRef.update({
+        displayName,
+        photoURL,
         updatedAt: new Date(),
-      },
-      { merge: true }
-    );
+      });
+    } else {
+      await userRef.set({
+        uid: targetUid,
+        displayName,
+        photoURL,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        role: "user",
+      });
+    }
 
-    return NextResponse.json({ message: "User updated successfully!" });
-  } catch (error: any) {
-    console.error("POST /api/profile error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return new Response(
+      JSON.stringify({ success: true, uid: targetUid }),
+      { status: 200 }
+    );
+  } catch (err) {
+    console.error("Profile update failed:", err);
+    return new Response(
+      JSON.stringify({ error: "Failed to update profile" }),
+      { status: 500 }
+    );
   }
 }
 
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const uid = searchParams.get("uid");
 
+  if (!uid) {
+    return new Response(JSON.stringify({ error: "Missing UID" }), { status: 400 });
+  }
+
+  let targetUid = uid;
+
+  const userDoc = await adminDb.collection("users").doc(uid).get();
+
+  if (!userDoc.exists) {
+    // fallback lookup by Google email
+    const firebaseUser = await adminAuth.getUser(uid).catch(() => null);
+    const email = firebaseUser?.email;
+
+    if (email) {
+      const linkedSnap = await adminDb
+        .collection("users")
+        .where("googleEmail", "==", email)
+        .limit(1)
+        .get();
+
+      if (!linkedSnap.empty) {
+        targetUid = linkedSnap.docs[0].id;
+      }
+    }
+  }
+
+  const doc = await adminDb.collection("users").doc(targetUid).get();
+
+  if (!doc.exists) {
+    return new Response(JSON.stringify({ error: "User not found" }), { status: 404 });
+  }
+
+  const data = doc.data();
+  return new Response(
+    JSON.stringify({
+      displayName: data?.displayName || "",
+      photoURL: data?.photoURL || "",
+      uid: targetUid,
+    }),
+    { status: 200 }
+  );
+}
