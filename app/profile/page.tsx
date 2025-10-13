@@ -56,7 +56,7 @@ export default async function ProfilePage() {
               </div>
 
               <div>
-                <h2 className="text-xl font-bold">{getDisplayName(userData, authUser)}</h2>
+                <h2 className="text-xl text-black font-bold">{getDisplayName(userData, authUser)}</h2>
               </div>
             </div>
 
@@ -97,7 +97,7 @@ export default async function ProfilePage() {
                 </div>
 
                 <div>
-                  <p className="font-semibold">Google Account</p>
+                  <p className="font-semibold text-black">Google Account</p>
                   {isGoogleSignIn && (
                     <p className="text-sm text-gray-700">Signed in with Google</p>
                   )}
@@ -145,7 +145,7 @@ export default async function ProfilePage() {
           <form action={handleLogout}>
             <button
               type="submit"
-              className="w-full bg-[#6a423a] hover:bg-[#593831] transition-colors text-white rounded-lg p-4 font-semibold"
+              className="w-full bg-[#6a423a] hover:bg-[#593831] transition-colors text-white rounded-lg p-4 font-semibold hover:cursor-pointer"
 
             >
               Log out

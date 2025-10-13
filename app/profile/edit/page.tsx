@@ -2,21 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { storage } from "@/lib/firebaseClient";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export default function EditProfilePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [uid, setUid] = useState<string | null>(null);
+  const [uid, setUid] = useState<string | null>(null);        // Firebase Auth UID
+  const [realUid, setRealUid] = useState<string | null>(null); // Firestore UID
   const [form, setForm] = useState({
-    fullName: "",
+    displayName: "",
     photoURL: "",
   });
 
-  // ✅ โหลดข้อมูลเดิมตอนเปิดหน้า
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // 1️⃣ ตรวจสอบ session
         const verifyRes = await fetch("/api/auth/verify");
         const verifyData = await verifyRes.json();
 
@@ -28,16 +29,13 @@ export default function EditProfilePage() {
 
         setUid(verifyData.uid);
 
-        // 2️⃣ ดึงข้อมูลโปรไฟล์เดิม
+        // ✅ Fetch Firestore user data by UID
         const profileRes = await fetch(`/api/profile?uid=${verifyData.uid}`);
         const profileData = await profileRes.json();
 
+        setRealUid(profileData.uid); // ✅ store Firestore UID
         setForm({
-          fullName:
-            profileData.fullName ||
-            profileData.displayName ||
-            verifyData.email?.split("@")[0] ||
-            "",
+          displayName: profileData.displayName || "",
           photoURL: profileData.photoURL || "",
         });
       } catch (error) {
@@ -51,32 +49,49 @@ export default function EditProfilePage() {
     fetchUserData();
   }, [router]);
 
-  // ✅ เมื่อพิมพ์แก้ชื่อ
-  const handleFullNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, fullName: e.target.value });
+  // ✅ Handle name change
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, displayName: e.target.value });
   };
 
-  // ✅ บันทึกข้อมูล (Save)
+  // ✅ Upload photo to the correct Firestore UID folder
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !realUid) return;
+
+    setLoading(true);
+    const fileRef = ref(storage, `profilePhotos/${realUid}/${file.name}`);
+
+    try {
+      const uploadSnap = await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(uploadSnap.ref);
+      setForm((prev) => ({ ...prev, photoURL: url }));
+    } catch (err) {
+      console.error("Upload failed:", err);
+      alert("❌ Failed to upload photo.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ Save to the correct Firestore UID
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uid) return alert("User ID not found");
+    if (!realUid) return alert("User ID not found");
 
     try {
       const res = await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          uid: uid,
-          displayName: form.fullName,
-          fullName: form.fullName,
+          uid: realUid,
+          displayName: form.displayName,
           photoURL: form.photoURL,
         }),
       });
 
       if (!res.ok) throw new Error("Failed to update profile");
       alert("✅ Profile updated successfully!");
-
-      // 3️⃣ บังคับ reload หน้า profile หลังกลับไป
       router.push(`/profile?updated=${Date.now()}`);
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -84,7 +99,6 @@ export default function EditProfilePage() {
     }
   };
 
-  // ✅ ปุ่ม Exit
   const handleExit = () => {
     if (confirm("Discard changes and return to your profile?")) {
       router.push("/profile");
@@ -93,36 +107,25 @@ export default function EditProfilePage() {
 
   if (loading) {
     return (
-      <main className="flex justify-center items-center min-h-screen text-gray-500 text-lg">
-        Loading your profile...
+      <main className="flex flex-col items-center justify-center min-h-screen bg-gray-100 px-4 py-10">
+        <div className="animate-pulse bg-white rounded-2xl shadow-lg p-8 w-full max-w-md text-center transition-all duration-300">
+          <div className="h-24 w-24 bg-gray-300 rounded-full mx-auto"></div>
+          <div className="h-4 bg-gray-300 rounded w-3/4 mx-auto mt-3"></div>
+          <div className="h-4 bg-gray-300 rounded w-1/2 mx-auto my-3"></div>
+        </div>
       </main>
     );
   }
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-gray-100 px-4 py-10">
-      <div
-        className="
-        bg-white rounded-2xl shadow-lg 
-        p-6 sm:p-8 md:p-10
-        w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl
-        text-center
-        transition-all duration-300
-      "
-      >
-        <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-900">
-          Edit Profile
-        </h1>
+      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md text-center transition-all duration-300">
+        <h1 className="text-2xl font-bold mb-6 text-gray-900">Edit Profile</h1>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           {/* Avatar */}
           <div className="flex flex-col items-center mb-4">
-            <div
-              className="
-              w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32
-              rounded-full bg-gray-300 flex items-center justify-center overflow-hidden
-            "
-            >
+            <div className="w-28 h-28 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
               {form.photoURL ? (
                 <img
                   src={form.photoURL}
@@ -131,61 +134,59 @@ export default function EditProfilePage() {
                 />
               ) : (
                 <svg
-                  className="w-12 h-12 text-white sm:w-14 sm:h-14"
+                  className="w-12 h-12 text-gray-400"
                   fill="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 
+                  1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 
+                  1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                 </svg>
               )}
             </div>
 
-            <button
-              type="button"
-              className="text-sm mt-3 text-gray-500 hover:text-black transition"
+            <input
+              type="file"
+              accept="image/*"
+              id="photoInput"
+              className="hidden"
+              onChange={handlePhotoUpload}
+            />
+            <label
+              htmlFor="photoInput"
+              className="text-sm mt-3 text-gray-500 hover:text-black cursor-pointer transition"
             >
               Upload Photo
-            </button>
+            </label>
           </div>
 
-          {/* Fullname */}
+          {/* Display Name */}
           <div className="text-left">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Fullname
+              Display Name
             </label>
             <input
               type="text"
-              value={form.fullName}
-              onChange={handleFullNameChange}
-              className="
-                border border-gray-300 focus:border-black focus:ring-1 focus:ring-black
-                p-2.5 rounded-md w-full text-gray-800
-                transition
-              "
-              placeholder="Enter your full name"
+              value={form.displayName}
+              onChange={handleNameChange}
+              className="border border-gray-300 focus:border-black focus:ring-1 focus:ring-black p-2.5 rounded-md w-full text-gray-800 transition"
+              placeholder="Enter your display name"
             />
           </div>
 
-          {/* Buttons */}
           <div className="flex flex-col sm:flex-row justify-center gap-3 mt-5">
             <button
               type="submit"
-              className="
-                flex-1 bg-black text-white py-2.5 rounded-lg 
-                hover:bg-gray-800 transition font-semibold
-              "
+              className="flex-1 bg-black text-white py-2.5 rounded-lg hover:bg-gray-800 transition font-semibold hover:cursor-pointer"
             >
               Save
             </button>
             <button
               type="button"
               onClick={handleExit}
-              className="
-                flex-1 bg-gray-300 text-gray-800 py-2.5 rounded-lg 
-                hover:bg-gray-400 transition font-semibold
-              "
+              className="flex-1 bg-gray-300 text-gray-800 py-2.5 rounded-lg hover:bg-gray-400 transition font-semibold hover:cursor-pointer"
             >
-              Exit
+              Cancel
             </button>
           </div>
         </form>
