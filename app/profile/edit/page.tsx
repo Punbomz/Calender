@@ -1,46 +1,103 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function EditProfilePage() {
   const router = useRouter();
-
+  const [loading, setLoading] = useState(true);
+  const [uid, setUid] = useState<string | null>(null);
   const [form, setForm] = useState({
     fullName: "",
     photoURL: "",
   });
 
-  // ✅ เมื่อแก้ Fullname
+  // ✅ โหลดข้อมูลเดิมตอนเปิดหน้า
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        // 1️⃣ ตรวจสอบ session
+        const verifyRes = await fetch("/api/auth/verify");
+        const verifyData = await verifyRes.json();
+
+        if (!verifyData?.uid) {
+          alert("Session expired. Please log in again.");
+          router.push("/login");
+          return;
+        }
+
+        setUid(verifyData.uid);
+
+        // 2️⃣ ดึงข้อมูลโปรไฟล์เดิม
+        const profileRes = await fetch(`/api/profile?uid=${verifyData.uid}`);
+        const profileData = await profileRes.json();
+
+        setForm({
+          fullName:
+            profileData.fullName ||
+            profileData.displayName ||
+            verifyData.email?.split("@")[0] ||
+            "",
+          photoURL: profileData.photoURL || "",
+        });
+      } catch (error) {
+        console.error("Error loading profile:", error);
+        alert("Failed to load your profile.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [router]);
+
+  // ✅ เมื่อพิมพ์แก้ชื่อ
   const handleFullNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, fullName: e.target.value });
   };
 
-  // ✅ ฟังก์ชันบันทึกข้อมูล
+  // ✅ บันทึกข้อมูล (Save)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!uid) return alert("User ID not found");
 
-    await fetch("/api/profile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        uid: "cWFO4h8PCGhkOHIxIcP4qYgCrUg1", // 🔧 (ภายหลังจะดึงจาก verify API)
-        displayName: form.fullName,
-        fullName: form.fullName,
-        photoURL: form.photoURL,
-      }),
-    });
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: uid,
+          displayName: form.fullName,
+          fullName: form.fullName,
+          photoURL: form.photoURL,
+        }),
+      });
 
-    alert("✅ Profile updated successfully!");
-    router.push("/profile"); // ✅ กลับไปหน้าโปรไฟล์
+      if (!res.ok) throw new Error("Failed to update profile");
+      alert("✅ Profile updated successfully!");
+
+      // 3️⃣ บังคับ reload หน้า profile หลังกลับไป
+      router.push(`/profile?updated=${Date.now()}`);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      alert("❌ Failed to update profile.");
+    }
   };
 
-  // ✅ ปุ่มออก (กลับโดยไม่บันทึก)
-  const handleCancel = () => {
-    if (confirm("Discard changes and return to profile?")) {
+  // ✅ ปุ่ม Exit
+  const handleExit = () => {
+    if (confirm("Discard changes and return to your profile?")) {
       router.push("/profile");
     }
   };
+
+  if (loading) {
+    return (
+      <main className="flex justify-center items-center min-h-screen text-gray-500 text-lg">
+        Loading your profile...
+      </main>
+    );
+  }
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-gray-100 px-4 py-10">
@@ -122,13 +179,13 @@ export default function EditProfilePage() {
             </button>
             <button
               type="button"
-              onClick={handleCancel}
+              onClick={handleExit}
               className="
                 flex-1 bg-gray-300 text-gray-800 py-2.5 rounded-lg 
                 hover:bg-gray-400 transition font-semibold
               "
             >
-              Cancel
+              Exit
             </button>
           </div>
         </form>
