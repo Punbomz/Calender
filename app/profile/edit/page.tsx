@@ -60,7 +60,7 @@ export default function EditProfilePage() {
     if (!file || !realUid) return;
 
     setLoading(true);
-    const fileRef = ref(storage, `profilePhotos/${realUid}/${file.name}`);
+    const fileRef = ref(storage, `avatars/${file.name}`);
 
     try {
       const uploadSnap = await uploadBytes(fileRef, file);

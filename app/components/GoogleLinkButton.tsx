@@ -127,7 +127,7 @@ export default function GoogleLinkButton({ isLinked, userId }: GoogleLinkButtonP
         <button
           onClick={handleUnlinkGoogle}
           disabled={loading}
-          className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium hover:cursor-pointer"
         >
           {loading ? 'Unlinking...' : 'Unlink'}
         </button>
@@ -135,7 +135,7 @@ export default function GoogleLinkButton({ isLinked, userId }: GoogleLinkButtonP
         <button
           onClick={handleLinkGoogle}
           disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium hover:cursor-pointer"
         >
           {loading ? 'Linking...' : 'Link Account'}
         </button>

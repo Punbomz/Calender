@@ -107,14 +107,10 @@ export async function loginUser(
       const userData = {
         uid: uid,
         displayName: displayName,
-        originalDisplayName: displayName, // Store original display name
         email: decodedToken.email || email,
         photoURL: photoURL,
-        originalPhotoURL: photoURL, // Store original photo URL
         googleEmail: isGoogleLogin ? decodedToken.email : null,
         googleLinked: isGoogleLogin,
-        googleDisplayName: isGoogleLogin ? decodedToken.name : null,
-        googlePhotoURL: isGoogleLogin ? decodedToken.picture : null,
         lastLogin: FieldValue.serverTimestamp(),
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
