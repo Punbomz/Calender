@@ -1,31 +1,27 @@
-// app/api/auth/verify/route.ts
-export const runtime = "nodejs";
-
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { adminAuth } from "@/lib/firebaseAdmin";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const cookieStore = await cookies();
+  const session = cookieStore.get("session")?.value;
+
+  if (!session) {
+    // ❌ ไม่มี session
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const cookieStore = await cookies();
-    const session = cookieStore.get("session")?.value;
-
-    if (!session) {
-      return NextResponse.json({ error: "No session" }, { status: 401 });
-    }
-
+    // ✅ ตรวจสอบ session token จาก Firebase
     const decoded = await adminAuth.verifySessionCookie(session, true);
 
-    console.log("✅ Verified UID:", decoded.uid);
-
-    return NextResponse.json({
-      success: true,
-      uid: decoded.uid,
-      email: decoded.email,
-    });
-  } catch (error: any) {
-    console.error("❌ Verify error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    // สำเร็จ → ตอบกลับข้อมูลผู้ใช้
+    return NextResponse.json(
+      { message: "Authorized", uid: decoded.uid, email: decoded.email },
+      { status: 200 }
+    );
+  } catch (error) {
+    // ❌ session ไม่ถูกต้องหรือหมดอายุ
+    return NextResponse.json({ error: "Invalid session" }, { status: 401 });
   }
 }
-
