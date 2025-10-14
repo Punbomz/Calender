@@ -1,6 +1,5 @@
-export default function updateTask() {
-    return(
-        null
-    )
+import { NextRequest, NextResponse } from "next/server";
 
+export async function POST(req: NextRequest) {
+  
 }

@@ -1,6 +1,5 @@
-export default function deleteTask() {
-    return(
-        null
-    )
+import { NextRequest, NextResponse } from "next/server";
 
+export async function POST(req: NextRequest) {
+  
 }
