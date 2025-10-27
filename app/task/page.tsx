@@ -319,6 +319,12 @@ function TaskPageInner() {
                       <span className="text-sm font-semibold">
                         {formatTime(task.deadLine)}
                       </span>
+                      <button
+                        onClick={() => handleDeleteTask(task.id)}
+                        className="ml-3 px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-sm border border-white/30"
+                        aria-label={`Delete ${task.taskName}`}>
+                        Delete
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -380,6 +386,13 @@ function TaskPageInner() {
                         <div className="flex items-center gap-1.5 ml-4">
                           <Clock className="w-4 h-4" />
                           <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
+                          <button
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="ml-3 px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-sm border border-white/30"
+                            aria-label={`Delete ${task.taskName}`}
+                          >
+                            Delete
+                          </button>
                         </div>
                       </div>
                     </div>
