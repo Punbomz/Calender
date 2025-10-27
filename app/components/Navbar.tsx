@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Menu, Calendar, FileText, User, Plus, Trash2, ChevronDown, ChevronRight, Tag, CheckSquare, Inbox, ListTodo } from 'lucide-react';
 
 interface Category {
@@ -16,6 +16,8 @@ type NavSection = 'tasks' | 'calendar' | 'profile';
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const view = searchParams.get("view");
   
   const [activeSection, setActiveSection] = useState<NavSection>('tasks');
   const [isTaskExpanded, setIsTaskExpanded] = useState(true);
@@ -139,7 +141,7 @@ export default function Navbar() {
             <button 
               onClick={() => router.push('/task')}
               className={`w-full flex hover:cursor-pointer items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                pathname === '/task' && !pathname.includes('view=completed')
+                !view
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-300 hover:bg-zinc-800'
               }`}
@@ -152,7 +154,7 @@ export default function Navbar() {
             <button 
               onClick={() => router.push('/task?view=completed')}
               className={`hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                pathname.includes('view=completed')
+                view === 'completed'
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-300 hover:bg-zinc-800'
               }`}
@@ -234,12 +236,9 @@ export default function Navbar() {
             <div className="flex-1 overflow-y-auto p-4 pb-24">
                <div className="space-y-1 mb-6">
                   <button 
-                    onClick={() => {
-                      router.push('/task');
-                      setIsMobileSidebarOpen(false);
-                    }}
+                    onClick={() => router.push('/task')}
                     className={`w-full flex hover:cursor-pointer items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                      pathname === '/task' && !pathname.includes('view=completed')
+                      !view
                         ? 'bg-blue-600 text-white'
                         : 'text-gray-300 hover:bg-zinc-800'
                     }`}
@@ -250,12 +249,9 @@ export default function Navbar() {
                   </button>
 
                   <button 
-                    onClick={() => {
-                      router.push('/task?view=completed');
-                      setIsMobileSidebarOpen(false);
-                    }}
+                    onClick={() => router.push('/task?view=completed')}
                     className={`hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                      pathname.includes('view=completed')
+                      view === 'completed'
                         ? 'bg-blue-600 text-white'
                         : 'text-gray-300 hover:bg-zinc-800'
                     }`}
