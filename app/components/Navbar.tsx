@@ -1,7 +1,8 @@
 // components/Navbar.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Menu, Calendar, FileText, User, Plus, Trash2, ChevronDown, ChevronRight, Tag, CheckSquare, Inbox, ListTodo } from 'lucide-react';
 
 interface Category {
@@ -10,9 +11,12 @@ interface Category {
   count: number;
 }
 
-type NavSection = 'tasks' | 'calendar' | 'files' | 'profile';
+type NavSection = 'tasks' | 'calendar' | 'profile';
 
 export default function Navbar() {
+  const router = useRouter();
+  const pathname = usePathname();
+  
   const [activeSection, setActiveSection] = useState<NavSection>('tasks');
   const [isTaskExpanded, setIsTaskExpanded] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -22,12 +26,45 @@ export default function Navbar() {
     { id: 3, name: 'Work', count: 3},
   ]);
 
+  // Update active section based on current pathname
+  useEffect(() => {
+    if (pathname.startsWith('/calendar')) {
+      setActiveSection('calendar');
+    } else if (pathname.startsWith('/profile')) {
+      setActiveSection('profile');
+    } else {
+      setActiveSection('tasks');
+    }
+  }, [pathname]);
+
+  // Add blur effect to body when sidebar is open
+  useEffect(() => {
+    if (isMobileSidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileSidebarOpen]);
+
+  const handleNavigation = (section: NavSection, path: string) => {
+    setActiveSection(section);
+    router.push(path);
+    setIsMobileSidebarOpen(false); // Close mobile sidebar after navigation
+  };
+
   return (
     <>
       {/* Left Icon Sidebar (Narrow) - Dark Theme */}
-      <aside className="hidden lg:flex lg:fixed lg:left-0 lg:top-0 lg:h-screen lg:w-16 bg-zinc-950 text-white flex-col items-center py-4 z-50 border-r border-zinc-800">
+      <aside className="hidden lg:flex lg:fixed lg:left-0 lg:top-0 lg:h-screen lg:w-16 bg-black text-white flex-col items-center py-4 z-50 border-r border-zinc-800">
         {/* Profile Icon */}
-        <button className="mb-6 p-2 rounded-lg hover:cursor-pointer hover:bg-zinc-800 transition-colors">
+        <button 
+          onClick={() => handleNavigation('profile', '/profile')}
+          className="mb-6 p-2 rounded-lg hover:cursor-pointer hover:bg-zinc-800 transition-colors"
+        >
           <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
             <User size={20} />
           </div>
@@ -36,14 +73,14 @@ export default function Navbar() {
         {/* Navigation Icons */}
         <div className="flex-1 flex flex-col gap-4">
           <button 
-            onClick={() => setActiveSection('tasks')}
+            onClick={() => handleNavigation('tasks', '/tasks')}
             className={`p-3 rounded-lg hover:cursor-pointer transition-colors ${activeSection === 'tasks' ? 'bg-blue-600' : 'hover:bg-zinc-800'}`}
           >
             <CheckSquare size={24} />
           </button>
           
           <button 
-            onClick={() => setActiveSection('calendar')}
+            onClick={() => handleNavigation('calendar', '/calendar')}
             className={`p-3 rounded-lg hover:cursor-pointer transition-colors ${activeSection === 'calendar' ? 'bg-blue-600' : 'hover:bg-zinc-800'}`}
           >
             <Calendar size={24} />
@@ -55,7 +92,9 @@ export default function Navbar() {
       <aside className="hidden lg:flex lg:fixed lg:left-16 lg:top-0 lg:h-screen lg:w-64 bg-zinc-900 border-r border-zinc-800 flex-col z-40">
         {/* Header */}
         <div className="p-4 border-b border-zinc-800">
-          <h2 className="text-lg font-semibold text-white">Tasks</h2>
+          <h2 className="text-lg font-semibold text-white">
+            Calender
+          </h2>
         </div>
 
         {/* Content Area */}
@@ -81,10 +120,10 @@ export default function Navbar() {
             <div className="flex items-center justify-between px-3 mb-2 group">
               <h3 className="text-xs font-semibold text-gray-500 uppercase">Categories</h3>
               <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-zinc-800 rounded">
-                <Plus size={14} className="text-gray-400" />
+                <Plus size={14} className="text-gray-400 hover:cursor-pointer" />
               </button>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 mb-4">
               {categories.map((category) => (
                 <button
                   key={category.id}
@@ -102,7 +141,7 @@ export default function Navbar() {
                     {category.count === 0 && (
                       <div className="w-2 h-2 rounded-full group-hover:hidden"></div>
                     )}
-                    <Trash2 size={16} className="text-gray-500 hidden group-hover:block" />
+                    <Trash2 size={16} className="text-gray-500 hidden group-hover:block hover:cursor-pointer hover:text-red-400" />
                   </div>
                 </button>
               ))}
@@ -126,7 +165,9 @@ export default function Navbar() {
           className="hover:cursor-pointer flex items-center gap-2"
         >
           <Menu size={24} />
-          <span className="text-xl font-semibold">Tasks</span>
+          <span className="text-xl font-semibold">
+            Celender
+          </span>
         </button>
       </nav>
 
@@ -134,23 +175,23 @@ export default function Navbar() {
       {isMobileSidebarOpen && (
         <>
           <div 
-            className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-md z-40 transition-all duration-300"
             onClick={() => setIsMobileSidebarOpen(false)}
           />
-          <aside className="lg:hidden fixed left-0 top-0 h-screen w-64 bg-zinc-900 text-white z-50 flex flex-col animate-slide-in">
+          <aside className="lg:hidden fixed left-0 top-0 h-screen w-64 bg-black text-white z-50 flex flex-col animate-slide-in shadow-2xl">
             {/* Sidebar Header */}
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-              <span className="text-xl font-semibold">Tasks</span>
+              <span className="text-xl font-semibold">Calender</span>
               <button 
                 onClick={() => setIsMobileSidebarOpen(false)}
-                className="hover:cursor-pointer p-2 hover:bg-zinc-800 rounded"
+                className="hover:cursor-pointer p-2 hover:bg-zinc-800 rounded transition-colors"
               >
                 <Menu size={24} />
               </button>
             </div>
 
-            {/* Sidebar Content */}
-            <div className="flex-1 overflow-y-auto p-4">
+            {/* Sidebar Content - Add padding bottom to prevent overlap */}
+            <div className="flex-1 overflow-y-auto p-4 pb-24">
               {/* Quick Views */}
               <div className="space-y-1 mb-6">
                 <button className="hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-zinc-800 rounded-lg transition-colors">
@@ -170,13 +211,10 @@ export default function Navbar() {
 
               {/* Category Section */}
               <div className="mb-6">
-                <div className="flex items-center justify-between px-3 mb-2 group">
+                <div className="flex items-center justify-between px-3 mb-2">
                   <h3 className="text-xs font-semibold text-gray-500 uppercase">Categories</h3>
-                  <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-zinc-800 rounded">
-                    <Plus size={14} className="hover:cursor-pointer text-gray-400" />
-                  </button>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 mb-4">
                   {categories.map((category) => (
                     <button
                       key={category.id}
@@ -194,10 +232,21 @@ export default function Navbar() {
                         {category.count === 0 && (
                           <div className="w-2 h-2 rounded-full group-hover:hidden"></div>
                         )}
-                        <Trash2 size={16} className="hover:cursor-pointer text-gray-500 hidden group-hover:block" />
+                        <Trash2 size={16} className="hover:cursor-pointer text-gray-500 hidden group-hover:block hover:text-red-400" />
                       </div>
                     </button>
                   ))}
+                </div>
+                
+                {/* Category Action Buttons */}
+                <div className="flex items-center gap-2 px-3">
+                  <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors hover:cursor-pointer">
+                    <Plus size={18} />
+                    <span className="text-sm font-medium">Add Category</span>
+                  </button>
+                  <button className="p-2 hover:bg-zinc-800 rounded-lg transition-colors hover:cursor-pointer text-gray-400 hover:text-red-400">
+                    <Trash2 size={18} />
+                  </button>
                 </div>
               </div>
 
@@ -210,41 +259,33 @@ export default function Navbar() {
                 </button>
               </div>
             </div>
-
-            {/* Bottom Actions in Sidebar */}
-            <div className="p-4 border-t border-zinc-800">
-              <div className="flex items-center justify-around">
-                <button className="p-3 bg-white rounded-full text-black hover:bg-gray-200 transition-colors">
-                  <Plus size={24} />
-                </button>
-                <button className="p-3 hover:bg-zinc-800 rounded-full transition-colors">
-                  <Trash2 size={24} />
-                </button>
-              </div>
-            </div>
           </aside>
         </>
       )}
 
       {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-zinc-950 text-white border-t border-zinc-800 z-50">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-black text-white border-t border-zinc-800 z-50">
         <div className="flex items-center justify-around p-4">
-          <button className="p-2">
+          <button 
+            onClick={() => handleNavigation('calendar', '/calendar')}
+            className={`p-2 hover:cursor-pointer transition-colors ${activeSection === 'calendar' ? 'text-blue-400' : 'hover:text-blue-400'}`}
+          >
             <Calendar size={24} />
           </button>
-          <button className="p-2">
-            <FileText size={24} />
+          <button 
+            onClick={() => handleNavigation('tasks', '/tasks')}
+            className={`p-2 hover:cursor-pointer transition-colors ${activeSection === 'tasks' ? 'text-blue-400' : 'hover:text-blue-400'}`}
+          >
+            <CheckSquare size={24} />
           </button>
-          <button className="p-2">
+          <button 
+            onClick={() => handleNavigation('profile', '/profile')}
+            className={`p-2 hover:cursor-pointer transition-colors ${activeSection === 'profile' ? 'text-blue-400' : 'hover:text-blue-400'}`}
+          >
             <User size={24} />
           </button>
         </div>
       </nav>
-
-      {/* Mobile Content Spacer */}
-      <div className="lg:hidden pt-16 pb-20">
-        {/* Your main content goes here */}
-      </div>
     </>
   );
 }
