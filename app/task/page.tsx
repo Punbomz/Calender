@@ -98,6 +98,39 @@ function TaskPageInner() {
     );
   };
 
+  // ---------------------------
+  // Delete Task (optimistic + API/Firestore)
+  // ---------------------------
+  const handleDeleteTask = async (taskId: string) => {
+    const ok = confirm("ลบงานนี้จริงไหม?");
+    if (!ok) return;
+
+    // 1) Optimistic: เอาออกจากจอก่อน
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+
+    try {
+      // ========== ทางเลือก A: เรียก API ของคุณ ==========
+      // ถ้าคุณจะทำผ่าน API ให้สร้าง route: app/api/task/[id]/route.ts (DELETE)
+      // แล้วเรียกแบบนี้:
+      const res = await fetch(`/api/task/${taskId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Delete failed");
+
+    // ========== ทางเลือก B: ลบตรง Firestore ฝั่ง client (ถ้าคุณมี firebaseClient) ==========
+    // import { deleteDoc, doc } from "firebase/firestore";
+    // import { db } from "@/lib/firebaseClient";
+    // await deleteDoc(doc(db, "tasks", taskId));
+    } catch (e) {
+      alert("ลบไม่สำเร็จ จะรีโหลดรายการให้ใหม่");
+    // rollback แบบง่ายที่สุด: เรียก fetchTasks อีกครั้ง
+      fetchTasks();
+    }
+  };
+
+
   // Determine which tasks to display based on view parameter
   const isCompletedView = viewParam === 'completed';
   
