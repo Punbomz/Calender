@@ -4,11 +4,12 @@ import { doc, deleteDoc } from "firebase/firestore"; // ถ้าใช้ Admin
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { taskId: string ; userId: string } }
 ) {
   try {
     // TODO: (ถ้ามี Auth) ตรวจสิทธิ์ว่าเป็น owner ก่อนถึงจะลบได้
-    await deleteDoc(doc(db, "tasks", params.id));
+    const docRef = doc(db, "users", params.userId, "tasks", params.taskId);
+    await deleteDoc(docRef);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: "Delete failed" }, { status: 500 });
