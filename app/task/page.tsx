@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Calendar, Clock, AlertCircle, Plus } from 'lucide-react';
 
 interface Task {
@@ -16,6 +17,9 @@ interface Task {
 }
 
 export default function TasksPage() {
+  const searchParams = useSearchParams();
+  const viewParam = searchParams.get('view'); // 'completed' or null (for 'all')
+  
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,12 +100,18 @@ export default function TasksPage() {
     );
   };
 
-  // Filter out finished tasks from main list
-  const unfinishedTasks = tasks.filter(task => !task.isFinished);
+  // Determine which tasks to display based on view parameter
+  const isCompletedView = viewParam === 'completed';
+  
+  // Filter tasks based on the view
+  const displayTasks = isCompletedView 
+    ? tasks.filter(task => task.isFinished)
+    : tasks.filter(task => !task.isFinished);
+  
   const finishedTasks = tasks.filter(task => task.isFinished);
 
-  // Sort unfinished tasks based on filter type
-  const sortedUnfinishedTasks = [...unfinishedTasks].sort((a, b) => {
+  // Sort display tasks based on filter type
+  const sortedDisplayTasks = [...displayTasks].sort((a, b) => {
     if (filterType === 'deadline') {
       return timestampToDate(a.deadLine).getTime() - timestampToDate(b.deadLine).getTime();
     }
@@ -168,52 +178,68 @@ export default function TasksPage() {
   return (
     <div className="min-h-screen bg-gray-200 p-6">
       <div className="max-w-3xl mx-auto">
-        {/* Filter Buttons */}
-        <div className="flex gap-10 mb-6 justify-center">
-          <button
-            onClick={() => setFilterType('all')}
-            className={`px-6 py-2 rounded-full font-semibold transition-colors hover:cursor-pointer ${
-              filterType === 'all'
-                ? 'bg-black text-white'
-                : 'bg-gray-400 text-white hover:bg-gray-500'
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setFilterType('deadline')}
-            className={`px-6 py-2 rounded-full font-semibold transition-colors hover:cursor-pointer ${
-              filterType === 'deadline'
-                ? 'bg-black text-white'
-                : 'bg-gray-400 text-white hover:bg-gray-500'
-            }`}
-          >
-            Deadline
-          </button>
-          <button
-            onClick={() => setFilterType('priority')}
-            className={`px-6 py-2 rounded-full font-semibold transition-colors hover:cursor-pointer ${
-              filterType === 'priority'
-                ? 'bg-black text-white'
-                : 'bg-gray-400 text-white hover:bg-gray-500'
-            }`}
-          >
-            Priority
-          </button>
-        </div>
+        {/* Filter Buttons - Only show for non-completed view */}
+        {!isCompletedView && (
+          <div className="flex gap-10 mb-6 justify-center">
+            <button
+              onClick={() => setFilterType('all')}
+              className={`px-6 py-2 rounded-full font-semibold transition-colors hover:cursor-pointer ${
+                filterType === 'all'
+                  ? 'bg-black text-white'
+                  : 'bg-gray-400 text-white hover:bg-gray-500'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setFilterType('deadline')}
+              className={`px-6 py-2 rounded-full font-semibold transition-colors hover:cursor-pointer ${
+                filterType === 'deadline'
+                  ? 'bg-black text-white'
+                  : 'bg-gray-400 text-white hover:bg-gray-500'
+              }`}
+            >
+              Deadline
+            </button>
+            <button
+              onClick={() => setFilterType('priority')}
+              className={`px-6 py-2 rounded-full font-semibold transition-colors hover:cursor-pointer ${
+                filterType === 'priority'
+                  ? 'bg-black text-white'
+                  : 'bg-gray-400 text-white hover:bg-gray-500'
+              }`}
+            >
+              Priority
+            </button>
+          </div>
+        )}
 
-        {/* Unfinished Tasks List */}
-        {sortedUnfinishedTasks.length === 0 ? (
+        {/* Page Title for Completed View */}
+        {isCompletedView && (
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">Completed Tasks</h1>
+            <p className="text-sm text-gray-600 mt-1">{sortedDisplayTasks.length} task(s) completed</p>
+          </div>
+        )}
+
+        {/* Tasks List */}
+        {sortedDisplayTasks.length === 0 ? (
           <div className="text-center text-gray-500 py-12">
-            <p className="text-xl">No tasks found</p>
-            <p className="text-sm mt-2">Create your first task to get started!</p>
+            <p className="text-xl">
+              {isCompletedView ? 'No completed tasks' : 'No tasks found'}
+            </p>
+            <p className="text-sm mt-2">
+              {isCompletedView ? 'Complete some tasks to see them here!' : 'Create your first task to get started!'}
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {sortedUnfinishedTasks.map((task) => (
+            {sortedDisplayTasks.map((task) => (
               <div
                 key={task.id}
-                className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md`}
+                className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md ${
+                  isCompletedView ? 'opacity-75' : ''
+                }`}
               >
                 {/* Header with checkbox and title */}
                 <div className="flex items-center gap-3 mb-3">
@@ -240,7 +266,9 @@ export default function TasksPage() {
                     </button>
                   </div>
                   <div className="flex-1 min-w-0 flex items-baseline justify-between">
-                    <h3 className="text-xl font-bold leading-tight">{task.taskName}</h3>
+                    <h3 className={`text-xl font-bold leading-tight ${isCompletedView ? 'line-through' : ''}`}>
+                      {task.taskName}
+                    </h3>
                     <p className="text-sm opacity-90 ml-4 whitespace-nowrap">{formatDate(task.deadLine)}</p>
                   </div>
                 </div>
@@ -261,14 +289,14 @@ export default function TasksPage() {
           </div>
         )}
 
-        {/* Finished Tasks Section */}
-        {finishedTasks.length > 0 && (
+        {/* Finished Tasks Section - Only show in "All" view (not completed view) */}
+        {!isCompletedView && finishedTasks.length > 0 && (
           <div className="mt-6">
             <button
               onClick={() => setShowFinished(!showFinished)}
               className="hover: cursor-pointer w-full bg-black text-white rounded-2xl p-4 font-semibold flex items-center justify-between transition-colors"
             >
-              <span>Finished</span>
+              <span>Completed</span>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold">{finishedTasks.length}</span>
                 <svg 

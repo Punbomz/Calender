@@ -25,6 +25,8 @@ export default function Navbar() {
     { id: 2, name: 'To Do', count: 0},
     { id: 3, name: 'Work', count: 3},
   ]);
+  const [allTasksCount, setAllTasksCount] = useState(0);
+  const [completedTasksCount, setCompletedTasksCount] = useState(0);
 
   // Update active section based on current pathname
   useEffect(() => {
@@ -36,6 +38,40 @@ export default function Navbar() {
       setActiveSection('tasks');
     }
   }, [pathname]);
+
+  // Fetch tasks data
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch('/api/task/gettask', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const tasks = data.tasks || [];
+        
+        // Count all active tasks (not finished)
+        const activeTasks = tasks.filter((task: any) => !task.isFinished);
+        setAllTasksCount(activeTasks.length);
+        
+        // Count completed tasks
+        const completedTasks = tasks.filter((task: any) => task.isFinished);
+        setCompletedTasksCount(completedTasks.length);
+      } catch (err) {
+        console.error('Error fetching tasks:', err);
+      }
+    };
+
+    fetchTasks();
+  }, []);
 
   // Add blur effect to body when sidebar is open
   useEffect(() => {
@@ -99,6 +135,34 @@ export default function Navbar() {
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-4">
+           <div className="space-y-1 mb-6">
+            <button 
+              onClick={() => router.push('/task')}
+              className={`w-full flex hover:cursor-pointer items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                pathname === '/task' && !pathname.includes('view=completed')
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-300 hover:bg-zinc-800'
+              }`}
+            >
+              <Inbox size={18} />
+              <span>All</span>
+              <span className="ml-auto text-sm text-white-500">{allTasksCount}</span>
+            </button>
+
+            <button 
+              onClick={() => router.push('/task?view=completed')}
+              className={`hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                pathname.includes('view=completed')
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-300 hover:bg-zinc-800'
+              }`}
+            >
+              <CheckSquare size={18} />
+              <span>Completed</span>
+              <span className="ml-auto text-sm text-white-500">{completedTasksCount}</span>
+            </button>
+          </div>
+
           {/* Category Section */}
           <div className="mb-6">
             <div className="flex items-center justify-between px-3 mb-2 group">
@@ -119,7 +183,7 @@ export default function Navbar() {
                     {category.count > 0 && (
                       <>
                         <div className="w-2 h-2 rounded-full"></div>
-                        <span className="text-sm text-gray-500 group-hover:hidden">{category.count}</span>
+                        <span className="text-sm text-white-500 group-hover:hidden">{category.count}</span>
                       </>
                     )}
                     {category.count === 0 && (
@@ -130,14 +194,6 @@ export default function Navbar() {
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Completed and Trash */}
-          <div className="space-y-1">
-            <button className="w-full hover:cursor-pointer flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-zinc-800 rounded-lg transition-colors">
-              <CheckSquare size={18} />
-              <span>Completed</span>
-            </button>
           </div>
         </div>
       </aside>
@@ -176,6 +232,40 @@ export default function Navbar() {
 
             {/* Sidebar Content - Add padding bottom to prevent overlap */}
             <div className="flex-1 overflow-y-auto p-4 pb-24">
+               <div className="space-y-1 mb-6">
+                  <button 
+                    onClick={() => {
+                      router.push('/task');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full flex hover:cursor-pointer items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                      pathname === '/task' && !pathname.includes('view=completed')
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-300 hover:bg-zinc-800'
+                    }`}
+                  >
+                    <Inbox size={18} />
+                    <span>All</span>
+                    <span className="ml-auto text-sm text-white-500">{allTasksCount}</span>
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      router.push('/task?view=completed');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                      pathname.includes('view=completed')
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-300 hover:bg-zinc-800'
+                    }`}
+                  >
+                    <CheckSquare size={18} />
+                    <span>Completed</span>
+                    <span className="ml-auto text-sm text-white-500">{completedTasksCount}</span>
+                  </button>
+                </div>
+
               {/* Category Section */}
               <div className="mb-6">
                 <div className="flex items-center justify-between px-3 mb-2">
@@ -193,7 +283,7 @@ export default function Navbar() {
                         {category.count > 0 && (
                           <>
                             <div className="w-2 h-2 rounded-full"></div>
-                            <span className="text-sm text-gray-500 group-hover:hidden">{category.count}</span>
+                            <span className="text-sm text-white-500 group-hover:hidden">{category.count}</span>
                           </>
                         )}
                         {category.count === 0 && (
@@ -215,15 +305,6 @@ export default function Navbar() {
                     <Trash2 size={18} />
                   </button>
                 </div>
-              </div>
-
-              {/* Completed */}
-              <div className="space-y-1">
-                <button className="hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-zinc-800 rounded-lg transition-colors">
-                  <CheckSquare size={18} />
-                  <span>Completed</span>
-                  <span className="ml-auto text-sm text-gray-500">3</span>
-                </button>
               </div>
             </div>
           </aside>
