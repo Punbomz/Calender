@@ -9,11 +9,11 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ error: "Missing tagName" }), { status: 400 });
     }
 
-    const tagRef = adminDb.collection("tag").doc(tagName);
+    const tagRef = adminDb.collection("category").doc(tagName);
 
     // Create new tag
     await tagRef.set({
-        tagName,
+        categoryName: tagName,
         createdAt: new Date(),
         updatedAt: new Date(),
     });
