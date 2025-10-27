@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Menu, Calendar, FileText, User, Plus, Trash2, ChevronDown, ChevronRight, Tag, CheckSquare, Inbox, ListTodo } from 'lucide-react';
+import CreateCategoryModal from './CreateCategoryModal';
 
 interface Category {
   id: number;
@@ -22,6 +23,7 @@ export default function Navbar() {
   const [activeSection, setActiveSection] = useState<NavSection>('tasks');
   const [isTaskExpanded, setIsTaskExpanded] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([
     { id: 1, name: 'YouTube', count: 12},
     { id: 2, name: 'To Do', count: 0},
@@ -92,6 +94,12 @@ export default function Navbar() {
     setActiveSection(section);
     router.push(path);
     setIsMobileSidebarOpen(false); // Close mobile sidebar after navigation
+  };
+
+  const handleCreateCategory = (name: string) => {
+    console.log("Category created:", name);
+    // Add logic here to refresh categories or update state
+    // You might want to fetch categories again or add the new category to state
   };
 
   return (
@@ -169,7 +177,10 @@ export default function Navbar() {
           <div className="mb-6">
             <div className="flex items-center justify-between px-3 mb-2 group">
               <h3 className="text-xs font-semibold text-gray-500 uppercase">Categories</h3>
-              <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-zinc-800 rounded">
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-zinc-800 rounded"
+              >
                 <Plus size={14} className="text-gray-400 hover:cursor-pointer" />
               </button>
             </div>
@@ -293,7 +304,10 @@ export default function Navbar() {
                 
                 {/* Category Action Buttons */}
                 <div className="flex items-center gap-2 px-3">
-                  <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors hover:cursor-pointer">
+                  <button 
+                    onClick={() => setIsModalOpen(true)}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors hover:cursor-pointer"
+                  >
                     <Plus size={18} />
                     <span className="text-sm font-medium">Add Category</span>
                   </button>
@@ -330,6 +344,14 @@ export default function Navbar() {
           </button>
         </div>
       </nav>
+
+      {/* Create Category Modal */}
+      <CreateCategoryModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onCreate={handleCreateCategory}
+        title="Create Category"
+      />
     </>
   );
 }

@@ -16,6 +16,8 @@ export default function CreateCategoryModal({
   title = "Create Category",
 }: Props) {
   const [name, setName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -35,14 +37,42 @@ export default function CreateCategoryModal({
       window.removeEventListener("keydown", onKey);
       clearTimeout(timer);
       setName("");
+      setError("");
     };
   }, [open, onClose]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
-    onCreate?.(trimmed);
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/task/createTag", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ tagName: trimmed }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Failed to create category");
+        return;
+      }
+
+      onCreate?.(trimmed);
+      onClose();
+    } catch (err) {
+      console.error("Error creating category:", err);
+      setError("Failed to create category. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -82,6 +112,11 @@ export default function CreateCategoryModal({
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="rounded-lg bg-red-500/20 px-3 py-2 text-sm text-red-200">
+                  {error}
+                </div>
+              )}
               <input
                 ref={inputRef}
                 value={name}
@@ -99,10 +134,10 @@ export default function CreateCategoryModal({
                 </button>
                 <button
                   type="submit"
-                  disabled={!name.trim()}
+                  disabled={!name.trim() || isLoading}
                   className="rounded-lg bg-black px-5 py-2 text-sm font-semibold text-white shadow-md enabled:hover:opacity-90 disabled:opacity-40"
                 >
-                  Create
+                  {isLoading ? "Creating..." : "Create"}
                 </button>
               </div>
             </form>
