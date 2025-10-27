@@ -20,8 +20,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<'all' | 'deadline' | 'priority'>('all');
-  const [isFinishedFilter, setIsFinishedFilter] = useState<'all' | 'finished'>('all');
-  const [finishedCount, setFinishedCount] = useState(2);
+  const [showFinished, setShowFinished] = useState(false);
 
   const fetchTasks = async () => {
     try {
@@ -45,7 +44,6 @@ export default function TasksPage() {
       console.log('Tasks array:', data.tasks);
       
       setTasks(data.tasks || []);
-      setFinishedCount(data.tasks?.filter((t: Task) => t.isFinished).length || 0);
     } catch (err: any) {
       console.error('Error:', err);
       setError(err.message);
@@ -88,11 +86,29 @@ export default function TasksPage() {
     return 'bg-gray-500';
   };
 
-  const filteredTasks = tasks.filter(task => {
-    if (isFinishedFilter === 'finished') {
-      return task.isFinished;
+  const handleCheckboxChange = async (taskId: string, currentStatus: boolean) => {
+    // TODO: Implement API call to update task status
+    // For now, update local state
+    setTasks(prevTasks =>
+      prevTasks.map(task =>
+        task.id === taskId ? { ...task, isFinished: !currentStatus } : task
+      )
+    );
+  };
+
+  // Filter out finished tasks from main list
+  const unfinishedTasks = tasks.filter(task => !task.isFinished);
+  const finishedTasks = tasks.filter(task => task.isFinished);
+
+  // Sort unfinished tasks based on filter type
+  const sortedUnfinishedTasks = [...unfinishedTasks].sort((a, b) => {
+    if (filterType === 'deadline') {
+      return timestampToDate(a.deadLine).getTime() - timestampToDate(b.deadLine).getTime();
     }
-    return true;
+    if (filterType === 'priority') {
+      return b.priorityLevel - a.priorityLevel; // Higher priority first
+    }
+    return 0; // 'all' - no sorting
   });
 
   if (loading) {
@@ -120,12 +136,9 @@ export default function TasksPage() {
         {/* Filter Buttons */}
         <div className="flex gap-10 mb-6 justify-center">
           <button
-            onClick={() => {
-              setFilterType('all');
-              setIsFinishedFilter('all');
-            }}
+            onClick={() => setFilterType('all')}
             className={`px-6 py-2 rounded-full font-semibold transition-colors hover:cursor-pointer ${
-              filterType === 'all' && isFinishedFilter === 'all'
+              filterType === 'all'
                 ? 'bg-black text-white'
                 : 'bg-gray-400 text-white hover:bg-gray-500'
             }`}
@@ -154,31 +167,42 @@ export default function TasksPage() {
           </button>
         </div>
 
-        {/* Tasks List */}
-        {filteredTasks.length === 0 ? (
+        {/* Unfinished Tasks List */}
+        {sortedUnfinishedTasks.length === 0 ? (
           <div className="text-center text-gray-500 py-12">
             <p className="text-xl">No tasks found</p>
             <p className="text-sm mt-2">Create your first task to get started!</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredTasks.map((task) => (
+            {sortedUnfinishedTasks.map((task) => (
               <div
                 key={task.id}
                 className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md`}
               >
                 {/* Header with checkbox and title */}
-                <div className="flex items-start gap-3 mb-3">
+                <div className="flex items-center gap-3 mb-3">
                   <div className="flex-shrink-0 mt-1">
-                    <div className={`w-7 h-7 rounded border-2 border-white flex items-center justify-center ${
-                      task.isFinished ? 'bg-white' : 'bg-transparent'
-                    }`}>
+                    <button
+                      onClick={() => handleCheckboxChange(task.id, task.isFinished)}
+                      className="w-7 h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all hover: cursor-pointer"
+                    >
                       {task.isFinished && (
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        <svg 
+                          className="w-5 h-5 text-white" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={3} 
+                            d="M5 13l4 4L19 7" 
+                          />
                         </svg>
                       )}
-                    </div>
+                    </button>
                   </div>
                   <div className="flex-1 min-w-0 flex items-baseline justify-between">
                     <h3 className="text-xl font-bold leading-tight">{task.taskName}</h3>
@@ -202,28 +226,102 @@ export default function TasksPage() {
           </div>
         )}
 
-        {/* Finished Filter */}
-        {tasks.some(t => t.isFinished) && (
-          <button
-            onClick={() => setIsFinishedFilter(isFinishedFilter === 'all' ? 'finished' : 'all')}
-            className="w-full bg-black text-white rounded-2xl p-4 mt-4 font-semibold flex items-center justify-between hover:bg-gray-800 transition-colors"
-          >
-            <span>Finished</span>
-            <span className="bg-white text-black rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
-              {finishedCount}
-              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </span>
-          </button>
+        {/* Finished Tasks Section */}
+        {finishedTasks.length > 0 && (
+          <div className="mt-6">
+            <button
+              onClick={() => setShowFinished(!showFinished)}
+              className="hover: cursor-pointer w-full bg-black text-white rounded-2xl p-4 font-semibold flex items-center justify-between hover:bg-gray-800 transition-colors"
+            >
+              <span>Finished</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold">{finishedTasks.length}</span>
+                <svg 
+                  className={`w-4 h-4 transition-transform ${showFinished ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </button>
+
+            {/* Finished Tasks List */}
+            {showFinished && (
+              <div className="space-y-4 mt-4">
+                {finishedTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md opacity-75`}
+                  >
+                    {/* Header with checkbox and title */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="flex-shrink-0 mt-1">
+                      <button
+                        onClick={() => handleCheckboxChange(task.id, task.isFinished)}
+                        className="w-7 h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all"
+                      >
+                        {task.isFinished && (
+                          <svg 
+                            className="w-5 h-5 text-white" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                          >
+                            <path 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              strokeWidth={3} 
+                              d="M5 13l4 4L19 7" 
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                      <div className="flex-1 min-w-0 flex items-baseline justify-between">
+                        <h3 className="text-xl font-bold leading-tight line-through">{task.taskName}</h3>
+                        <p className="text-sm opacity-90 ml-4 whitespace-nowrap">{formatDate(task.deadLine)}</p>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="mb-3">
+                      <p className="text-base font-semibold mb-1">Description</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm opacity-90 flex-1">{task.description || 'No description'}</p>
+                        <div className="flex items-center gap-1.5 ml-4">
+                          <Clock className="w-4 h-4" />
+                          <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {/* Add Button */}
         <button
-          className="fixed bottom-25 right-8 w-16 h-16 bg-black text-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-800 transition-all hover:scale-110"
+          className="
+            fixed 
+            bottom-25 right-6 
+            sm:bottom-25 sm:right-8 
+            md:bottom-28 md:right-12 
+            lg:bottom-32 lg:right-16 
+            xl:bottom-10 xl:right-20
+            w-16 h-16 
+            lg:w-20 lg:h-20
+            bg-black text-white rounded-full shadow-lg 
+            flex items-center justify-center 
+            hover:bg-gray-800 transition-all hover:scale-110
+            hover: cursor-pointer
+          "
           onClick={() => console.log('Add new task')}
         >
-          <Plus size={32} strokeWidth={2.5} />
+          <Plus size={32} className="lg:w-10 lg:h-10" strokeWidth={2.5} />
         </button>
       </div>
     </div>
