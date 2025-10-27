@@ -4,6 +4,7 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/next"
 import ConditionalNavbar from './components/ConditionalNavbar';
 import MainContent from './components/MainContent';
+import { Suspense } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +32,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <ConditionalNavbar />
+        <Suspense fallback={null}>
+          <ConditionalNavbar />
+        </Suspense>
         <MainContent>
           {children}
         </MainContent>
