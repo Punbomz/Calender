@@ -1,17 +1,24 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebaseClient";   // ถ้าคุณใช้ server SDK ให้เปลี่ยนตามที่มี
-import { doc, deleteDoc } from "firebase/firestore"; // ถ้าใช้ Admin SDK แทน ก็ปรับให้ตรง
+import { db } from "@/lib/firebaseClient";
+import { doc, deleteDoc } from "firebase/firestore";
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: { taskId: string ; userId: string } }
-) {
+export async function DELETE(req: Request) {
   try {
-    // TODO: (ถ้ามี Auth) ตรวจสิทธิ์ว่าเป็น owner ก่อนถึงจะลบได้
-    const docRef = doc(db, "users", params.userId, "tasks", params.taskId);
+    // อ่านข้อมูลจาก body
+    const { userId, taskId } = await req.json();
+
+    // ตรวจสอบค่าที่จำเป็น
+    if (!userId || !taskId) {
+      return NextResponse.json({ error: "Missing userId or taskId" }, { status: 400 });
+    }
+
+    // path: users/{userId}/tasks/{taskId}
+    const docRef = doc(db, "users", userId, "tasks", taskId);
     await deleteDoc(docRef);
+
     return NextResponse.json({ ok: true });
   } catch (e) {
+    console.error("Delete failed:", e);
     return NextResponse.json({ error: "Delete failed" }, { status: 500 });
   }
 }
