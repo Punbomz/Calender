@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 // 1. Import 'db' (Firestore instance) จาก firebaseAdmin.ts
 // (ชื่อ 'db' อาจต่างกันไป ขึ้นอยู่กับว่าคุณ export ไว้อย่างไร)
-import { db } from '@/lib/firebaseAdmin'; 
+import { adminDb as db } from '@/lib/firebaseAdmin';
 
 export async function POST(req: NextRequest) {
   try {
