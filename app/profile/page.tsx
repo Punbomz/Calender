@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import GoogleLinkButton from "@/app/components/GoogleLinkButton";
+import { cookies } from 'next/headers';
 import {
   getVerifiedUserId,
   getUserData,
@@ -11,10 +12,13 @@ import {
 } from "./profile-utils";
 import { handleLogout } from "./profile-actions";
 
+export const dynamic = 'force-dynamic';
+
 export default async function ProfilePage() {
   try {
     // Get verified user ID (handles account linking logic)
     const uid = await getVerifiedUserId();
+    const cookieStore = await cookies();
 
     // Get all user data
     const {
