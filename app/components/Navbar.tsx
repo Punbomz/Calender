@@ -99,22 +99,6 @@ export default function Navbar() {
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-4">
-          {/* Quick Views */}
-          <div className="space-y-1 mb-6">
-            <button className="w-full flex hover:cursor-pointer items-center gap-3 px-3 py-2 text-gray-300 hover:bg-zinc-800 rounded-lg transition-colors">
-              <Inbox size={18} />
-              <span>All</span>
-            </button>
-            <button className="w-full flex hover:cursor-pointer items-center gap-3 px-3 py-2 text-gray-300 hover:bg-zinc-800 rounded-lg transition-colors">
-              <Calendar size={18} />
-              <span>Deadline</span>
-            </button>
-            <button className="w-full flex hover:cursor-pointer items-center gap-3 px-3 py-2 text-gray-300 hover:bg-zinc-800 rounded-lg transition-colors">
-              <Calendar size={18} />
-              <span>Priority</span>
-            </button>
-          </div>
-
           {/* Category Section */}
           <div className="mb-6">
             <div className="flex items-center justify-between px-3 mb-2 group">
@@ -192,23 +176,6 @@ export default function Navbar() {
 
             {/* Sidebar Content - Add padding bottom to prevent overlap */}
             <div className="flex-1 overflow-y-auto p-4 pb-24">
-              {/* Quick Views */}
-              <div className="space-y-1 mb-6">
-                <button className="hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-zinc-800 rounded-lg transition-colors">
-                  <Inbox size={18} />
-                  <span>All</span>
-                  <span className="ml-auto text-sm text-gray-500">15</span>
-                </button>
-                <button className="hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-zinc-800 rounded-lg transition-colors">
-                  <Calendar size={18} />
-                  <span>Deadline</span>
-                </button>
-                <button className="hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-zinc-800 rounded-lg transition-colors">
-                  <Calendar size={18} />
-                  <span>Priority</span>
-                </button>
-              </div>
-
               {/* Category Section */}
               <div className="mb-6">
                 <div className="flex items-center justify-between px-3 mb-2">
