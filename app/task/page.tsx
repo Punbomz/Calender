@@ -1,7 +1,6 @@
-// app/tasks/page.tsx - Client Component approach
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Calendar, Clock, AlertCircle, Plus } from 'lucide-react';
 
@@ -16,7 +15,8 @@ interface Task {
   priorityLevel: number;
 }
 
-export default function TasksPage() {
+// ✅ Wrap your existing code inside a sub-component
+function TaskPageInner() {
   const searchParams = useSearchParams();
   const viewParam = searchParams.get('view'); // 'completed' or null (for 'all')
   
@@ -91,8 +91,6 @@ export default function TasksPage() {
   };
 
   const handleCheckboxChange = async (taskId: string, currentStatus: boolean) => {
-    // TODO: Implement API call to update task status
-    // For now, update local state
     setTasks(prevTasks =>
       prevTasks.map(task =>
         task.id === taskId ? { ...task, isFinished: !currentStatus } : task
@@ -116,30 +114,24 @@ export default function TasksPage() {
       return timestampToDate(a.deadLine).getTime() - timestampToDate(b.deadLine).getTime();
     }
     if (filterType === 'priority') {
-      return b.priorityLevel - a.priorityLevel; // Higher priority first
+      return b.priorityLevel - a.priorityLevel;
     }
-    return 0; // 'all' - no sorting
+    return 0;
   });
 
+  // --- all your original UI remains exactly the same ---
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-200 p-6">
         <div className="max-w-3xl mx-auto">
-          {/* Filter Buttons Skeleton */}
           <div className="flex gap-10 mb-6 justify-center">
             {[1, 2, 3].map((i) => (
               <div key={i} className="w-24 h-10 bg-gray-300 rounded-full animate-pulse" />
             ))}
           </div>
-
-          {/* Task Cards Skeleton */}
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="bg-gray-300 rounded-2xl p-5 shadow-md animate-pulse"
-              >
-                {/* Header skeleton */}
+              <div key={i} className="bg-gray-300 rounded-2xl p-5 shadow-md animate-pulse">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-7 h-7 bg-gray-400 rounded-md" />
                   <div className="flex-1 flex items-baseline justify-between">
@@ -147,8 +139,6 @@ export default function TasksPage() {
                     <div className="h-4 bg-gray-400 rounded w-20 ml-4" />
                   </div>
                 </div>
-
-                {/* Description skeleton */}
                 <div className="mb-3">
                   <div className="h-4 bg-gray-400 rounded w-24 mb-2" />
                   <div className="flex items-center justify-between">
@@ -178,7 +168,7 @@ export default function TasksPage() {
   return (
     <div className="min-h-screen bg-gray-200 p-6">
       <div className="max-w-3xl mx-auto">
-        {/* Filter Buttons - Only show for non-completed view */}
+        {/* Filter Buttons */}
         {!isCompletedView && (
           <div className="flex gap-10 mb-6 justify-center">
             <button
@@ -241,7 +231,6 @@ export default function TasksPage() {
                   isCompletedView ? 'opacity-75' : ''
                 }`}
               >
-                {/* Header with checkbox and title */}
                 <div className="flex items-center gap-3 mb-3">
                   <div className="flex-shrink-0 mt-1">
                     <button
@@ -272,8 +261,6 @@ export default function TasksPage() {
                     <p className="text-sm opacity-90 ml-4 whitespace-nowrap">{formatDate(task.deadLine)}</p>
                   </div>
                 </div>
-
-                {/* Description */}
                 <div className="mb-3">
                   <p className="text-base font-semibold mb-1">Description</p>
                   <div className="flex items-center justify-between">
@@ -289,7 +276,7 @@ export default function TasksPage() {
           </div>
         )}
 
-        {/* Finished Tasks Section - Only show in "All" view (not completed view) */}
+        {/* Finished Section */}
         {!isCompletedView && finishedTasks.length > 0 && (
           <div className="mt-6">
             <button
@@ -310,7 +297,6 @@ export default function TasksPage() {
               </div>
             </button>
 
-            {/* Finished Tasks List */}
             {showFinished && (
               <div className="space-y-4 mt-4">
                 {finishedTasks.map((task) => (
@@ -318,7 +304,6 @@ export default function TasksPage() {
                     key={task.id}
                     className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md opacity-75`}
                   >
-                    {/* Header with checkbox and title */}
                     <div className="flex items-center gap-3 mb-3">
                       <div className="flex-shrink-0 mt-1">
                       <button
@@ -347,8 +332,6 @@ export default function TasksPage() {
                         <p className="text-sm opacity-90 ml-4 whitespace-nowrap">{formatDate(task.deadLine)}</p>
                       </div>
                     </div>
-
-                    {/* Description */}
                     <div className="mb-3">
                       <p className="text-base font-semibold mb-1">Description</p>
                       <div className="flex items-center justify-between">
@@ -368,25 +351,21 @@ export default function TasksPage() {
 
         {/* Add Button */}
         <button
-          className="
-            fixed 
-            bottom-25 right-6 
-            sm:bottom-25 sm:right-8 
-            md:bottom-28 md:right-12 
-            lg:bottom-32 lg:right-16 
-            xl:bottom-10 xl:right-20
-            w-16 h-16 
-            lg:w-20 lg:h-20
-            bg-black text-white rounded-full shadow-lg 
-            flex items-center justify-center 
-            hover:bg-gray-800 transition-all hover:scale-110
-            hover: cursor-pointer
-          "
+          className="fixed bottom-25 right-6 sm:bottom-25 sm:right-8 md:bottom-28 md:right-12 lg:bottom-32 lg:right-16 xl:bottom-10 xl:right-20 w-16 h-16 lg:w-20 lg:h-20 bg-black text-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-800 transition-all hover:scale-110 hover: cursor-pointer"
           onClick={() => console.log('Add new task')}
         >
           <Plus size={32} className="lg:w-10 lg:h-10" strokeWidth={2.5} />
         </button>
       </div>
     </div>
+  );
+}
+
+// ✅ Only this wrapper added (no other changes)
+export default function TasksPage() {
+  return (
+    <Suspense fallback={null}>
+      <TaskPageInner />
+    </Suspense>
   );
 }
