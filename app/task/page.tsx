@@ -113,8 +113,43 @@ export default function TasksPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-200">
-        <div className="text-gray-800 text-xl">Loading tasks...</div>
+      <div className="min-h-screen bg-gray-200 p-6">
+        <div className="max-w-3xl mx-auto">
+          {/* Filter Buttons Skeleton */}
+          <div className="flex gap-10 mb-6 justify-center">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="w-24 h-10 bg-gray-300 rounded-full animate-pulse" />
+            ))}
+          </div>
+
+          {/* Task Cards Skeleton */}
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="bg-gray-300 rounded-2xl p-5 shadow-md animate-pulse"
+              >
+                {/* Header skeleton */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-7 h-7 bg-gray-400 rounded-md" />
+                  <div className="flex-1 flex items-baseline justify-between">
+                    <div className="h-6 bg-gray-400 rounded w-1/3" />
+                    <div className="h-4 bg-gray-400 rounded w-20 ml-4" />
+                  </div>
+                </div>
+
+                {/* Description skeleton */}
+                <div className="mb-3">
+                  <div className="h-4 bg-gray-400 rounded w-24 mb-2" />
+                  <div className="flex items-center justify-between">
+                    <div className="h-4 bg-gray-400 rounded w-2/3" />
+                    <div className="h-4 bg-gray-400 rounded w-16 ml-4" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -231,7 +266,7 @@ export default function TasksPage() {
           <div className="mt-6">
             <button
               onClick={() => setShowFinished(!showFinished)}
-              className="hover: cursor-pointer w-full bg-black text-white rounded-2xl p-4 font-semibold flex items-center justify-between hover:bg-gray-800 transition-colors"
+              className="hover: cursor-pointer w-full bg-black text-white rounded-2xl p-4 font-semibold flex items-center justify-between transition-colors"
             >
               <span>Finished</span>
               <div className="flex items-center gap-2">
