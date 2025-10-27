@@ -73,7 +73,7 @@ export default function Navbar() {
         {/* Navigation Icons */}
         <div className="flex-1 flex flex-col gap-4">
           <button 
-            onClick={() => handleNavigation('tasks', '/tasks')}
+            onClick={() => handleNavigation('tasks', '/task')}
             className={`p-3 rounded-lg hover:cursor-pointer transition-colors ${activeSection === 'tasks' ? 'bg-blue-600' : 'hover:bg-zinc-800'}`}
           >
             <CheckSquare size={24} />
@@ -273,7 +273,7 @@ export default function Navbar() {
             <Calendar size={24} />
           </button>
           <button 
-            onClick={() => handleNavigation('tasks', '/tasks')}
+            onClick={() => handleNavigation('tasks', '/task')}
             className={`p-2 hover:cursor-pointer transition-colors ${activeSection === 'tasks' ? 'text-blue-400' : 'hover:text-blue-400'}`}
           >
             <CheckSquare size={24} />
