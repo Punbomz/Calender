@@ -102,7 +102,7 @@ export default function CreateCategoryModal({
           >
             <button
               onClick={onClose}
-              className="absolute right-2 top-2 text-white/80 hover:text-white"
+              className="hover: cursor-pointer absolute right-2 top-2 text-white/80 hover:text-white"
             >
               ×
             </button>
@@ -128,14 +128,14 @@ export default function CreateCategoryModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-full px-4 py-2 text-sm text-white/80 hover:text-white"
+                  className="hover: cursor-pointer rounded-full px-4 py-2 text-sm text-white/80 hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!name.trim() || isLoading}
-                  className="rounded-lg bg-black px-5 py-2 text-sm font-semibold text-white shadow-md enabled:hover:opacity-90 disabled:opacity-40"
+                  className="hover: cursor-pointer rounded-lg bg-black px-5 py-2 text-sm font-semibold text-white shadow-md enabled:hover:opacity-90 disabled:opacity-40"
                 >
                   {isLoading ? "Creating..." : "Create"}
                 </button>

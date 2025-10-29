@@ -22,7 +22,7 @@
     "react-dom": "19.1.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.56.0",
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@types/jest": "^30.0.0",
