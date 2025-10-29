@@ -7,7 +7,7 @@ export function middleware(request: NextRequest) {
 
   // Redirect ถ้าไม่มี session
   if (!session) {
-    if (pathname.startsWith("/profile") || pathname === "/") {
+    if (["/profile", "/task"].includes(pathname) || pathname === "/") {
       return NextResponse.redirect(new URL("/login", request.url));
     }
   }
@@ -23,5 +23,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/profile/:path*", "/login", "/register"],
+  matcher: ["/", "/profile/:path*", "/login", "/register", "/task/:path*"],
 };
