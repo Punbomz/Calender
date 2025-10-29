@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     // 3. รับข้อมูลจาก request body
     const body = await request.json();
-    const { taskName, description, category, priorityLevel, deadLine, isFinished } = body;
+    const { taskName, description, category, priorityLevel, deadLine } = body;
 
     // 4. Validate required fields
     if (!taskName || !category || !deadLine) {
@@ -48,16 +48,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. สร้าง task object
+    // 6. สร้าง task object ตามโครงสร้างที่ต้องการ
     const taskData = {
       taskName: taskName.trim(),
       description: description?.trim() || "",
       category: category.trim(),
       priorityLevel: Number(priorityLevel) || 1,
       deadLine: deadlineTimestamp,
-      isFinished: isFinished || false,
+      isFinished: false,
       createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
     };
 
     // 7. เพิ่ม task เข้า Firestore
