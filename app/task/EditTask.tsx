@@ -110,7 +110,7 @@ export default function EditTaskModal({
           taskId: editedTask.id,
           taskName: editedTask.title,
           description: editedTask.description,
-          priorityLevel: editedTask.priority,
+          priorityLevel: parseInt(editedTask.priority),
           category: editedTask.category,
           deadLine: editedTask.deadline,
         }),
