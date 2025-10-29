@@ -1,13 +1,32 @@
 // app/api/task/getcategory/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin"; // ใช้ Firebase Admin สำหรับ Server Side
+import { cookies } from "next/headers";
+import { adminDb, adminAuth } from "@/lib/firebaseAdmin";
 
 export async function GET(req: NextRequest) {
   try {
-    // ดึงข้อมูลทั้งหมดจาก collection "category"
-    const snapshot = await adminDb.collection("category").get();
+    // ✅ อ่าน session cookie
+    const cookieStore = await cookies();
+    const session = cookieStore.get("session")?.value;
 
-    // แปลงเป็น array
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized - No session found" },
+        { status: 401 }
+      );
+    }
+
+    // ✅ ตรวจสอบ session และดึง uid
+    const decodedToken = await adminAuth.verifySessionCookie(session, true);
+    const userId = decodedToken.uid;
+
+    // ✅ ดึง category ของ user คนนี้
+    const snapshot = await adminDb
+      .collection("users")
+      .doc(userId)
+      .collection("category")
+      .get();
+
     const categories = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -21,7 +40,11 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     console.error("Error fetching categories:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch categories", details: error.message },
+      {
+        success: false,
+        error: "Failed to fetch categories",
+        details: error.message,
+      },
       { status: 500 }
     );
   }

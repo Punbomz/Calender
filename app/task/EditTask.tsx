@@ -37,51 +37,55 @@ export default function EditTaskModal({
 
   // Fetch categories from API
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setLoadingCategories(true);
-        console.log('🔄 Fetching categories from API...');
-        
-        const response = await fetch('/api/task/getAllCategory', {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+  const fetchCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      console.log("🔄 Fetching categories from /api/task/getcategory ...");
 
-        console.log('📊 Response status:', response.status);
+      const response = await fetch("/api/task/getAllCategory", {
+        method: "GET",
+        credentials: "include", // ✅ ใช้ session cookie อัตโนมัติ
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await response.text();
-          console.error('❌ Response is not JSON:', text.substring(0, 200));
-          throw new Error('API returned non-JSON response');
-        }
+      console.log("📊 Response status:", response.status);
 
-        const data = await response.json();
-        console.log('✅ Categories data:', data);
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch categories');
-        }
-
-        setCategories(data.categories || []);
-      } catch (error: any) {
-        console.error('❌ Error fetching categories:', error);
-        // Use default categories on error
-        setCategories([
-          { id: '1', categoryName: 'Subject 1' },
-          { id: '2', categoryName: 'Subject 2' },
-          { id: '3', categoryName: 'Subject 3' },
-        ]);
-      } finally {
-        setLoadingCategories(false);
+      // ตรวจสอบ response format
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error("❌ Response is not JSON:", text.substring(0, 200));
+        throw new Error("API returned non-JSON response");
       }
-    };
 
-    fetchCategories();
-  }, []);
+      const data = await response.json();
+      console.log("✅ Categories data:", data);
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to fetch categories");
+      }
+
+      // ✅ เซ็ต category จาก API
+      setCategories(data.categories || []);
+    } catch (error: any) {
+      console.error("❌ Error fetching categories:", error);
+
+      // ✅ fallback: กรณี session หมดอายุหรือ API ล้มเหลว
+      setCategories([
+        { id: "1", categoryName: "Subject 1" },
+        { id: "2", categoryName: "Subject 2" },
+        { id: "3", categoryName: "Subject 3" },
+      ]);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  fetchCategories();
+}, []);
+
 
   // Handle input changes
   const handleInputChange = (
