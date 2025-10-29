@@ -5,20 +5,22 @@ import { collection, addDoc } from "firebase/firestore";
 export async function POST(req: NextRequest) {
   try {
     // อ่านข้อมูลจาก body
-    const { userId, title, detail, status } = await req.json();
+    const { userId, taskName, description, deadLine, priorityLevel, isFinished, category } = await req.json();
 
     // ตรวจสอบค่าที่จำเป็น
-    if (!userId || !title) {
-      return NextResponse.json({ error: "Missing userId or title" }, { status: 400 });
+    if (!userId || !taskName) {
+      return NextResponse.json({ error: "Missing userId or taskName" }, { status: 400 });
     }
 
     // เตรียมข้อมูล task
     const taskData = {
-      title,
-      detail: detail || "",
-      status: status || "pending",
+      taskName,
+      description: description || "",
+      deadLine: deadLine || null,
+      priorityLevel: priorityLevel || "normal",
+      isFinished: isFinished ?? false,
+      category: category || "general",
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
 
     // เลือก collection ของ user
