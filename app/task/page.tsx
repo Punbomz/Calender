@@ -2,8 +2,9 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Calendar, Clock, AlertCircle, Plus } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, Plus, Edit2 } from 'lucide-react';
 import AddTaskModal from './AddTask';
+import EditTaskModal from './EditTask';
 
 interface Task {
   id: string;
@@ -25,6 +26,17 @@ interface NewTask {
   deadline: string;
 }
 
+// Interface สำหรับ EditTask (ตรงกับที่ EditTaskModal ต้องการ)
+interface EditTask {
+  id: string;
+  title: string;
+  description: string;
+  priority: string;
+  category: string;
+  deadline: string;
+  isFinished?: boolean;
+}
+
 function TaskPageInner() {
   const searchParams = useSearchParams();
   const viewParam = searchParams.get('view');
@@ -35,7 +47,7 @@ function TaskPageInner() {
   const [filterType, setFilterType] = useState<'all' | 'deadline' | 'priority'>('all');
   const [showFinished, setShowFinished] = useState(false);
   
-  // ← เพิ่ม state สำหรับ Modal
+  // State สำหรับ Add Modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTask, setNewTask] = useState<NewTask>({
     title: '',
@@ -44,6 +56,10 @@ function TaskPageInner() {
     category: 'Subject 1',
     deadline: '',
   });
+
+  // State สำหรับ Edit Modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<EditTask | null>(null);
 
   const fetchTasks = async () => {
     try {
@@ -79,10 +95,8 @@ function TaskPageInner() {
     fetchTasks();
   }, []);
 
-  // ← เพิ่มฟังก์ชัน handleSaveTask
   const handleSaveTask = async () => {
     try {
-      // แปลง deadline จาก string เป็น timestamp
       const deadlineDate = new Date(newTask.deadline);
       
       const taskData = {
@@ -90,7 +104,7 @@ function TaskPageInner() {
         description: newTask.description,
         category: newTask.category,
         priorityLevel: parseInt(newTask.priority),
-        deadLine: deadlineDate.toISOString(), // หรือ format ตามที่ API ต้องการ
+        deadLine: deadlineDate.toISOString(),
         isFinished: false,
       };
 
@@ -107,10 +121,8 @@ function TaskPageInner() {
         throw new Error('Failed to add task');
       }
 
-      // ปิด Modal
       setShowAddModal(false);
       
-      // Reset form
       setNewTask({
         title: '',
         description: '',
@@ -119,7 +131,6 @@ function TaskPageInner() {
         deadline: '',
       });
       
-      // Refresh task list
       fetchTasks();
       
       alert('เพิ่มงานสำเร็จ!');
@@ -127,6 +138,48 @@ function TaskPageInner() {
       console.error('Error adding task:', err);
       alert('เพิ่มงานไม่สำเร็จ: ' + err.message);
     }
+  };
+
+  // ฟังก์ชันสำหรับเปิด Edit Modal
+  const handleEditTask = (task: Task) => {
+    // แปลง Task จาก API format เป็น EditTask format
+    const deadlineDate = timestampToDate(task.deadLine);
+    const formattedDeadline = deadlineDate.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:mm
+
+    setEditingTask({
+      id: task.id,
+      title: task.taskName,
+      description: task.description,
+      priority: task.priorityLevel.toString(),
+      category: task.category,
+      deadline: formattedDeadline,
+      isFinished: task.isFinished,
+    });
+    setShowEditModal(true);
+  };
+
+  // ฟังก์ชันสำหรับบันทึกการแก้ไข
+  const handleSaveEditedTask = (updatedTask: EditTask) => {
+    // อัพเดท tasks ใน state
+    setTasks(prevTasks =>
+      prevTasks.map(task =>
+        task.id === updatedTask.id
+          ? {
+              ...task,
+              taskName: updatedTask.title,
+              description: updatedTask.description,
+              priorityLevel: parseInt(updatedTask.priority),
+              category: updatedTask.category,
+              deadLine: {
+                _seconds: Math.floor(new Date(updatedTask.deadline).getTime() / 1000),
+                _nanoseconds: 0,
+              },
+            }
+          : task
+      )
+    );
+    setShowEditModal(false);
+    setEditingTask(null);
   };
 
   const timestampToDate = (timestamp: { _seconds: number; _nanoseconds: number }) => {
@@ -315,7 +368,7 @@ function TaskPageInner() {
                   <div className="flex-shrink-0 mt-1">
                     <button
                       onClick={() => handleCheckboxChange(task.id, task.isFinished)}
-                      className="w-7 h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all hover: cursor-pointer"
+                      className="w-7 h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all hover:cursor-pointer"
                     >
                       {task.isFinished && (
                         <svg 
@@ -338,7 +391,18 @@ function TaskPageInner() {
                     <h3 className={`text-xl font-bold leading-tight ${isCompletedView ? 'line-through' : ''}`}>
                       {task.taskName}
                     </h3>
-                    <p className="text-sm opacity-90 ml-4 whitespace-nowrap">{formatDate(task.deadLine)}</p>
+                    <div className="flex items-center gap-2 ml-4 whitespace-nowrap">
+                      <p className="text-sm opacity-90">{formatDate(task.deadLine)}</p>
+                      {!isCompletedView && (
+                        <button
+                          onClick={() => handleEditTask(task)}
+                          className="p-1.5 rounded-md hover:bg-white/20 transition-all"
+                          aria-label={`Edit ${task.taskName}`}
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="mb-3">
@@ -360,7 +424,7 @@ function TaskPageInner() {
           <div className="mt-6">
             <button
               onClick={() => setShowFinished(!showFinished)}
-              className="hover: cursor-pointer w-full bg-black text-white rounded-2xl p-4 font-semibold flex items-center justify-between transition-colors"
+              className="hover:cursor-pointer w-full bg-black text-white rounded-2xl p-4 font-semibold flex items-center justify-between transition-colors"
             >
               <span>Completed</span>
               <div className="flex items-center gap-2">
@@ -385,27 +449,27 @@ function TaskPageInner() {
                   >
                     <div className="flex items-center gap-3 mb-3">
                       <div className="flex-shrink-0 mt-1">
-                      <button
-                        onClick={() => handleCheckboxChange(task.id, task.isFinished)}
-                        className="w-7 h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all"
-                      >
-                        {task.isFinished && (
-                          <svg 
-                            className="w-5 h-5 text-white" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
-                          >
-                            <path 
-                              strokeLinecap="round" 
-                              strokeLinejoin="round" 
-                              strokeWidth={3} 
-                              d="M5 13l4 4L19 7" 
-                            />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
+                        <button
+                          onClick={() => handleCheckboxChange(task.id, task.isFinished)}
+                          className="w-7 h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all"
+                        >
+                          {task.isFinished && (
+                            <svg 
+                              className="w-5 h-5 text-white" 
+                              fill="none" 
+                              stroke="currentColor" 
+                              viewBox="0 0 24 24"
+                            >
+                              <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth={3} 
+                                d="M5 13l4 4L19 7" 
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                       <div className="flex-1 min-w-0 flex items-baseline justify-between">
                         <h3 className="text-xl font-bold leading-tight line-through">{task.taskName}</h3>
                         <p className="text-sm opacity-90 ml-4 whitespace-nowrap">{formatDate(task.deadLine)}</p>
@@ -435,15 +499,15 @@ function TaskPageInner() {
           </div>
         )}
 
-        {/* Add Button - แก้ไข onClick */}
+        {/* Add Button */}
         <button
-          className="fixed bottom-25 right-6 sm:bottom-25 sm:right-8 md:bottom-28 md:right-12 lg:bottom-32 lg:right-16 xl:bottom-10 xl:right-20 w-16 h-16 lg:w-20 lg:h-20 bg-black text-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-800 transition-all hover:scale-110 hover: cursor-pointer"
+          className="fixed bottom-25 right-6 sm:bottom-25 sm:right-8 md:bottom-28 md:right-12 lg:bottom-32 lg:right-16 xl:bottom-10 xl:right-20 w-16 h-16 lg:w-20 lg:h-20 bg-black text-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-800 transition-all hover:scale-110 hover:cursor-pointer"
           onClick={() => setShowAddModal(true)}
         >
           <Plus size={32} className="lg:w-10 lg:h-10" strokeWidth={2.5} />
         </button>
 
-        {/* Add Task Modal - เพิ่มส่วนนี้ */}
+        {/* Add Task Modal */}
         {showAddModal && (
           <AddTaskModal
             newTask={newTask}
@@ -452,11 +516,22 @@ function TaskPageInner() {
             onClose={() => setShowAddModal(false)}
           />
         )}
+
+        {/* Edit Task Modal */}
+        {showEditModal && editingTask && (
+          <EditTaskModal
+            task={editingTask}
+            onSave={handleSaveEditedTask}
+            onClose={() => {
+              setShowEditModal(false);
+              setEditingTask(null);
+            }}
+          />
+        )}
       </div>
     </div>
   );
 }
-
 
 export default function TasksPage() {
   return (
