@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Calendar, Clock, AlertCircle, Plus } from 'lucide-react';
+import AddTaskModal from './AddTask';
 
 interface Task {
   id: string;
@@ -15,16 +16,34 @@ interface Task {
   priorityLevel: number;
 }
 
-// ✅ Wrap your existing code inside a sub-component
+// Interface สำหรับ newTask
+interface NewTask {
+  title: string;
+  description: string;
+  priority: string;
+  category: string;
+  deadline: string;
+}
+
 function TaskPageInner() {
   const searchParams = useSearchParams();
-  const viewParam = searchParams.get('view'); // 'completed' or null (for 'all')
+  const viewParam = searchParams.get('view');
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<'all' | 'deadline' | 'priority'>('all');
   const [showFinished, setShowFinished] = useState(false);
+  
+  // ← เพิ่ม state สำหรับ Modal
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newTask, setNewTask] = useState<NewTask>({
+    title: '',
+    description: '',
+    priority: '2',
+    category: 'Subject 1',
+    deadline: '',
+  });
 
   const fetchTasks = async () => {
     try {
@@ -59,6 +78,56 @@ function TaskPageInner() {
   useEffect(() => {
     fetchTasks();
   }, []);
+
+  // ← เพิ่มฟังก์ชัน handleSaveTask
+  const handleSaveTask = async () => {
+    try {
+      // แปลง deadline จาก string เป็น timestamp
+      const deadlineDate = new Date(newTask.deadline);
+      
+      const taskData = {
+        taskName: newTask.title,
+        description: newTask.description,
+        category: newTask.category,
+        priorityLevel: parseInt(newTask.priority),
+        deadLine: deadlineDate.toISOString(), // หรือ format ตามที่ API ต้องการ
+        isFinished: false,
+      };
+
+      const response = await fetch('/api/task/addtask', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add task');
+      }
+
+      // ปิด Modal
+      setShowAddModal(false);
+      
+      // Reset form
+      setNewTask({
+        title: '',
+        description: '',
+        priority: '2',
+        category: 'Subject 1',
+        deadline: '',
+      });
+      
+      // Refresh task list
+      fetchTasks();
+      
+      alert('เพิ่มงานสำเร็จ!');
+    } catch (err: any) {
+      console.error('Error adding task:', err);
+      alert('เพิ่มงานไม่สำเร็จ: ' + err.message);
+    }
+  };
 
   const timestampToDate = (timestamp: { _seconds: number; _nanoseconds: number }) => {
     if (!timestamp || !timestamp._seconds) return new Date();
@@ -98,50 +167,31 @@ function TaskPageInner() {
     );
   };
 
-  // ---------------------------
-  // Delete Task (optimistic + API/Firestore)
-  // ---------------------------
   const handleDeleteTask = async (taskId: string) => {
     const ok = confirm("ลบงานนี้จริงไหม?");
     if (!ok) return;
 
-    // 1) Optimistic: เอาออกจากจอก่อน
     setTasks(prev => prev.filter(t => t.id !== taskId));
 
     try {
-      // ========== ทางเลือก A: เรียก API ของคุณ ==========
-      // ถ้าคุณจะทำผ่าน API ให้สร้าง route: app/api/task/[id]/route.ts (DELETE)
-      // แล้วเรียกแบบนี้:
       const res = await fetch(`/api/task/${taskId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
       });
       if (!res.ok) throw new Error("Delete failed");
-
-    // ========== ทางเลือก B: ลบตรง Firestore ฝั่ง client (ถ้าคุณมี firebaseClient) ==========
-    // import { deleteDoc, doc } from "firebase/firestore";
-    // import { db } from "@/lib/firebaseClient";
-    // await deleteDoc(doc(db, "tasks", taskId));
     } catch (e) {
       alert("ลบไม่สำเร็จ จะรีโหลดรายการให้ใหม่");
-    // rollback แบบง่ายที่สุด: เรียก fetchTasks อีกครั้ง
       fetchTasks();
     }
   };
 
-
-  // Determine which tasks to display based on view parameter
   const isCompletedView = viewParam === 'completed';
-  
-  // Filter tasks based on the view
   const displayTasks = isCompletedView 
     ? tasks.filter(task => task.isFinished)
     : tasks.filter(task => !task.isFinished);
-  
   const finishedTasks = tasks.filter(task => task.isFinished);
 
-  // Sort display tasks based on filter type
   const sortedDisplayTasks = [...displayTasks].sort((a, b) => {
     if (filterType === 'deadline') {
       return timestampToDate(a.deadLine).getTime() - timestampToDate(b.deadLine).getTime();
@@ -152,7 +202,6 @@ function TaskPageInner() {
     return 0;
   });
 
-  // --- all your original UI remains exactly the same ---
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-200 p-6">
@@ -237,7 +286,6 @@ function TaskPageInner() {
           </div>
         )}
 
-        {/* Page Title for Completed View */}
         {isCompletedView && (
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-800">Completed Tasks</h1>
@@ -245,7 +293,6 @@ function TaskPageInner() {
           </div>
         )}
 
-        {/* Tasks List */}
         {sortedDisplayTasks.length === 0 ? (
           <div className="text-center text-gray-500 py-12">
             <p className="text-xl">
@@ -309,7 +356,6 @@ function TaskPageInner() {
           </div>
         )}
 
-        {/* Finished Section */}
         {!isCompletedView && finishedTasks.length > 0 && (
           <div className="mt-6">
             <button
@@ -389,19 +435,29 @@ function TaskPageInner() {
           </div>
         )}
 
-        {/* Add Button */}
+        {/* Add Button - แก้ไข onClick */}
         <button
           className="fixed bottom-25 right-6 sm:bottom-25 sm:right-8 md:bottom-28 md:right-12 lg:bottom-32 lg:right-16 xl:bottom-10 xl:right-20 w-16 h-16 lg:w-20 lg:h-20 bg-black text-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-800 transition-all hover:scale-110 hover: cursor-pointer"
-          onClick={() => console.log('Add new task')}
+          onClick={() => setShowAddModal(true)}
         >
           <Plus size={32} className="lg:w-10 lg:h-10" strokeWidth={2.5} />
         </button>
+
+        {/* Add Task Modal - เพิ่มส่วนนี้ */}
+        {showAddModal && (
+          <AddTaskModal
+            newTask={newTask}
+            setNewTask={setNewTask}
+            onSave={handleSaveTask}
+            onClose={() => setShowAddModal(false)}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-// ✅ Only this wrapper added (no other changes)
+
 export default function TasksPage() {
   return (
     <Suspense fallback={null}>

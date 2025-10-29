@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Save, LogOut } from "lucide-react";
 
 // 1. กำหนด Type ของ Task ให้ชัดเจน
@@ -11,10 +11,16 @@ interface Task {
   deadline: string;
 }
 
+// Type สำหรับ Category
+interface Category {
+  id: string;
+  categoryName: string;
+  [key: string]: any; // สำหรับ fields อื่นๆ ถ้ามี
+}
+
 // 2. กำหนด Props สำหรับ Modal Component
 interface AddTaskModalProps {
   newTask: Task;
-  // ใช้ Type ที่แน่นอนแทน 'any'
   setNewTask: React.Dispatch<React.SetStateAction<Task>>;
   onSave: () => void;
   onClose: () => void;
@@ -27,6 +33,67 @@ export default function AddTaskModal({
   onSave,
   onClose,
 }: AddTaskModalProps) {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
+  // ดึง categories จาก API เมื่อ component mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        console.log('🔄 Fetching categories from API...');
+        
+        const response = await fetch('/api/task/getAllCategory', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        console.log('📊 Response status:', response.status);
+        console.log('📊 Response content-type:', response.headers.get('content-type'));
+
+        // ตรวจสอบว่า response เป็น JSON หรือไม่
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          console.error('❌ Response is not JSON:', text.substring(0, 200));
+          throw new Error('API returned non-JSON response');
+        }
+
+        const data = await response.json();
+        console.log('✅ Categories data:', data);
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch categories');
+        }
+
+        setCategories(data.categories || []);
+        
+        // ตั้งค่า default category ถ้ามี categories
+        if (data.categories && data.categories.length > 0 && !newTask.category) {
+          setNewTask(prev => ({
+            ...prev,
+            category: data.categories[0].categoryName
+          }));
+        }
+      } catch (error: any) {
+        console.error('❌ Error fetching categories:', error);
+        // ถ้า error ให้ใช้ default categories
+        setCategories([
+          { id: '1', categoryName: 'Subject 1' },
+          { id: '2', categoryName: 'Subject 2' },
+          { id: '3', categoryName: 'Subject 3' },
+        ]);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
   // สร้างฟังก์ชันจัดการการเปลี่ยนแปลงสำหรับ Input ต่างๆ
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -51,7 +118,7 @@ export default function AddTaskModal({
             </label>
             <input
               id="title"
-              name="title" // เพิ่ม name attribute
+              name="title"
               type="text"
               value={newTask.title}
               onChange={handleInputChange}
@@ -68,7 +135,7 @@ export default function AddTaskModal({
             </label>
             <textarea
               id="description"
-              name="description" // เพิ่ม name attribute
+              name="description"
               value={newTask.description}
               onChange={handleInputChange}
               placeholder="เพิ่มรายละเอียดสั้นๆ"
@@ -85,7 +152,7 @@ export default function AddTaskModal({
               </label>
               <select
                 id="priority"
-                name="priority" // เพิ่ม name attribute
+                name="priority"
                 value={newTask.priority}
                 onChange={handleInputChange}
                 className="w-full p-3 rounded-lg text-black bg-white border border-gray-300 appearance-none focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200"
@@ -103,14 +170,23 @@ export default function AddTaskModal({
               </label>
               <select
                 id="category"
-                name="category" // เพิ่ม name attribute
+                name="category"
                 value={newTask.category}
                 onChange={handleInputChange}
-                className="w-full p-3 rounded-lg text-black bg-white border border-gray-300 appearance-none focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200"
+                disabled={loadingCategories}
+                className="w-full p-3 rounded-lg text-black bg-white border border-gray-300 appearance-none focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="Subject 1">Subject 1</option>
-                <option value="Subject 2">Subject 2</option>
-                <option value="Subject 3">Subject 3</option>
+                {loadingCategories ? (
+                  <option>Loading...</option>
+                ) : categories.length === 0 ? (
+                  <option>No categories</option>
+                ) : (
+                  categories.map((cat) => (
+                    <option key={cat.id} value={cat.categoryName}>
+                      {cat.categoryName}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </div>
@@ -122,10 +198,11 @@ export default function AddTaskModal({
             </label>
             <input
               id="deadline"
-              name="deadline" // เพิ่ม name attribute
-              type="date"
+              name="deadline"
+              type="datetime-local"
               value={newTask.deadline}
               onChange={handleInputChange}
+              required
               className="w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200"
             />
           </div>
@@ -133,7 +210,7 @@ export default function AddTaskModal({
           {/* Buttons */}
           <div className="flex justify-end gap-3 pt-4 border-t border-white/20">
             <button
-              type="button" // ต้องระบุ type="button" เพื่อไม่ให้ form ถูก submit
+              type="button"
               onClick={onClose}
               className="flex items-center gap-2 bg-white/20 text-white font-bold px-4 py-2 rounded-lg hover:bg-white/30 transition-all duration-200"
             >
