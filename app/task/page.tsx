@@ -1,5 +1,6 @@
 'use client';
 
+import { auth } from '@/lib/firebaseClient';
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Calendar, Clock, AlertCircle, Plus, Edit2 } from 'lucide-react';
@@ -225,12 +226,14 @@ function TaskPageInner() {
     if (!ok) return;
 
     setTasks(prev => prev.filter(t => t.id !== taskId));
+    const userId = auth.currentUser?.uid;
 
     try {
-      const res = await fetch(`/api/task/${taskId}`, {
+      const res = await fetch("/api/task/delete", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ taskId, userId }),
       });
       if (!res.ok) throw new Error("Delete failed");
     } catch (e) {
