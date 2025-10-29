@@ -1,42 +1,91 @@
-import { NextResponse, NextRequest } from 'next/server';
-// 1. Import 'db' (Firestore instance) จาก firebaseAdmin.ts
-// (ชื่อ 'db' อาจต่างกันไป ขึ้นอยู่กับว่าคุณ export ไว้อย่างไร)
-import { adminDb as db } from '@/lib/firebaseAdmin';
+// app/api/task/updatetask/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { cookies } from "next/headers";
 
-export async function POST(req: NextRequest) {
+// PATCH - Update a task
+export async function PATCH(request: NextRequest) {
   try {
-    // 2. รับข้อมูลจาก body ที่ frontend ส่งมา
-    // frontend ของเพื่อนคุณต้องส่งมาในรูปแบบ:
-    // { "id": "รหัสtask123", "title": "หัวข้อใหม่", "completed": true }
-    const body = await req.json();
-    const { id, ...updateData } = body;
+    const cookieStore = await cookies();
+    const session = cookieStore.get("session")?.value;
 
-    // 3. ตรวจสอบว่ามี ID ส่งมาหรือไม่
-    if (!id) {
+    if (!session) {
       return NextResponse.json(
-        { error: 'Task ID is required' },
-        { status: 400 } // Bad Request
+        { error: "Unauthorized - No session found" },
+        { status: 401 }
       );
     }
 
-    // 4. อ้างอิงไปยังเอกสาร task ใน Firestore
-    // *** สำคัญ: 'tasks' คือชื่อ collection ของคุณ ถ้าใช้ชื่ออื่นให้เปลี่ยนตรงนี้ ***
-    const taskRef = db.collection('tasks').doc(id as string);
+    const decodedToken = await adminAuth.verifySessionCookie(session, true);
+    const userId = decodedToken.uid;
 
-    // 5. สั่งอัปเดตเอกสารด้วยข้อมูลใหม่
-    await taskRef.update(updateData);
+    const body = await request.json();
+    const { taskId, ...updateData } = body;
 
-    // 6. ส่งคำตอบว่าอัปเดตสำเร็จ
+    if (!taskId) {
+      return NextResponse.json(
+        { error: "Task ID is required" },
+        { status: 400 }
+      );
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { error: "No update data provided" },
+        { status: 400 }
+      );
+    }
+
+    const taskRef = adminDb
+      .collection("users")
+      .doc(userId)
+      .collection("tasks")
+      .doc(taskId);
+
+    // Check if task exists
+    const taskDoc = await taskRef.get();
+    if (!taskDoc.exists) {
+      return NextResponse.json(
+        { error: "Task not found" },
+        { status: 404 }
+      );
+    }
+
+    // Update the task with timestamp
+    const updatePayload = {
+      ...updateData,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await taskRef.update(updatePayload);
+
+    // Fetch the updated task
+    const updatedTaskDoc = await taskRef.get();
+    const updatedTask = {
+      id: updatedTaskDoc.id,
+      ...updatedTaskDoc.data(),
+    };
+
+    return NextResponse.json({
+      success: true,
+      message: "Task updated successfully",
+      task: updatedTask,
+    });
+  } catch (error: any) {
+    console.error("Error updating task:", error);
+
+    if (error.code === "auth/session-cookie-expired") {
+      return NextResponse.json(
+        { error: "Session expired" },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json(
-      { message: 'Task updated successfully', id: id },
-      { status: 200 }
-    );
-
-  } catch (error) {
-    console.error('Error updating task:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: "Failed to update task", details: error.message },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = 'force-dynamic';
