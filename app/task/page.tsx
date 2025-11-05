@@ -484,9 +484,11 @@ function TaskPageInner() {
             {sortedDisplayTasks.map((task) => (
               <div
                 key={task.id}
-                className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md ${
+                className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md hover: cursor-pointer ${
                   isCompletedView ? 'opacity-75' : ''
                 }`}
+                onClick={() => handleEditTask(task)}
+                aria-label={`Edit ${task.taskName}`}
               >
                 <div className="flex items-center gap-3 mb-3">
                   <div className="flex-shrink-0 mt-1">
@@ -511,29 +513,12 @@ function TaskPageInner() {
                       )}
                     </button>
                   </div>
-                  <div className="flex-1 min-w-0 flex items-baseline justify-between">
+                  <div className="flex-1 min-w-0 flex items-center justify-between">
                     <h3 className={`text-xl font-bold leading-tight ${isCompletedView ? 'line-through' : ''}`}>
                       {task.taskName}
                     </h3>
                     <div className="flex items-center gap-2 ml-4 whitespace-nowrap">
                       <p className="text-sm opacity-90">{formatDate(task.deadLine)}</p>
-                      {!isCompletedView && (
-                        <button
-                          onClick={() => handleEditTask(task)}
-                          className="p-1.5 rounded-md hover:bg-white/20 transition-all"
-                          aria-label={`Edit ${task.taskName}`}
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="mb-3">
-                  <p className="text-base font-semibold mb-1">Description</p>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm opacity-90 flex-1">{task.description || 'No description'}</p>
-                    <div className="flex items-center gap-1.5 ml-4">
                       <Clock className="w-4 h-4" />
                       <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
                     </div>
@@ -570,7 +555,9 @@ function TaskPageInner() {
                 {filteredFinishedTasks.map((task) => (
                   <div
                     key={task.id}
-                    className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md opacity-75`}
+                    className={`${getCardColor(task.priorityLevel)} hover: cursor-pointer rounded-2xl p-5 text-white shadow-md opacity-75`}
+                    onClick={() => handleEditTask(task)}
+                    aria-label={`Edit ${task.taskName}`}
                   >
                     <div className="flex items-center gap-3 mb-3">
                       <div className="flex-shrink-0 mt-1">
@@ -595,21 +582,15 @@ function TaskPageInner() {
                           )}
                         </button>
                       </div>
-                      <div className="flex-1 min-w-0 flex items-baseline justify-between">
+                      <div className="flex-1 min-w-0 flex items-center justify-between">
                         <h3 className="text-xl font-bold leading-tight line-through">{task.taskName}</h3>
-                        <p className="text-sm opacity-90 ml-4 whitespace-nowrap">{formatDate(task.deadLine)}</p>
-                      </div>
-                    </div>
-                    <div className="mb-3">
-                      <p className="text-base font-semibold mb-1">Description</p>
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm opacity-90 flex-1">{task.description || 'No description'}</p>
-                        <div className="flex items-center gap-1.5 ml-4">
+                        <div className="flex items-center gap-2 ml-4 whitespace-nowrap">
+                          <p className="text-sm opacity-90">{formatDate(task.deadLine)}</p>
                           <Clock className="w-4 h-4" />
                           <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
                           <button
                             onClick={() => handleDeleteTask(task.id)}
-                            className="ml-3 px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-sm border border-white/30"
+                            className="hover: cursor-pointer ml-3 px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-sm border border-white/30"
                             aria-label={`Delete ${task.taskName}`}
                           >
                             Delete
