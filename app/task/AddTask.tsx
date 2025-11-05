@@ -35,13 +35,14 @@ export default function AddTaskModal({
 }: AddTaskModalProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [error, setError] = useState("");
 
   // ดึง categories จาก API เมื่อ component mount
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         setLoadingCategories(true);
-        console.log("🔄 Fetching categories from /api/task/getcategory ...");
+        console.log("🔄 Fetching categories from /api/task/getAllCategory ...");
   
         const response = await fetch("/api/task/getAllCategory", {
           method: "GET",
@@ -69,23 +70,41 @@ export default function AddTaskModal({
         }
   
         // ✅ เซ็ต category จาก API
-        setCategories(data.categories || []);
+        const fetchedCategories = data.categories || [];
+        setCategories(fetchedCategories);
+        
+        // ✅ ถ้ามี categories และ newTask.category ว่าง ให้เลือก category แรก
+        if (fetchedCategories.length > 0 && !newTask.category) {
+          setNewTask(prev => ({
+            ...prev,
+            category: fetchedCategories[0].categoryName
+          }));
+        }
       } catch (error: any) {
         console.error("❌ Error fetching categories:", error);
   
         // ✅ fallback: กรณี session หมดอายุหรือ API ล้มเหลว
-        setCategories([
+        const fallbackCategories = [
           { id: "1", categoryName: "Subject 1" },
           { id: "2", categoryName: "Subject 2" },
           { id: "3", categoryName: "Subject 3" },
-        ]);
+        ];
+        setCategories(fallbackCategories);
+        
+        // เลือก category แรกถ้า newTask.category ว่าง
+        if (!newTask.category) {
+          setNewTask(prev => ({
+            ...prev,
+            category: fallbackCategories[0].categoryName
+          }));
+        }
       } finally {
         setLoadingCategories(false);
       }
     };
   
     fetchCategories();
-  }, []);
+  }, []); // เอา newTask ออกจาก dependency array เพื่อป้องกัน infinite loop
 
   // สร้างฟังก์ชันจัดการการเปลี่ยนแปลงสำหรับ Input ต่างๆ
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -96,18 +115,48 @@ export default function AddTaskModal({
     }));
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate ก่อนส่ง
+    if (!newTask.title.trim()) {
+      setError("กรุณากรอกชื่องาน");
+      return;
+    }
+    
+    if (!newTask.category) {
+      setError("กรุณาเลือกหมวดหมู่");
+      return;
+    }
+    
+    if (!newTask.deadline) {
+      setError("กรุณาเลือกกำหนดส่ง");
+      return;
+    }
+    
+    setError("");
+    onSave();
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-[#593831] text-white rounded-2xl shadow-xl p-6 w-full max-w-md relative max-h-[90vh] overflow-y-auto">
         <h2 className="text-3xl font-extrabold mb-6 text-center">เพิ่มงานใหม่</h2>
 
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
+
         {/* ฟอร์มการเพิ่มงาน */}
-        <form onSubmit={(e) => { e.preventDefault(); onSave(); }}>
+        <form onSubmit={handleSubmit}>
           
           {/* Title */}
           <div className="mb-4">
             <label htmlFor="title" className="block text-sm font-semibold mb-1">
-              ชื่องาน (Title)
+              ชื่องาน (Title) <span className="text-red-400">*</span>
             </label>
             <input
               id="title"
@@ -159,7 +208,7 @@ export default function AddTaskModal({
             {/* Category */}
             <div className="mb-4">
               <label htmlFor="category" className="block text-sm font-semibold mb-1">
-                หมวดหมู่ (Category)
+                หมวดหมู่ (Category) <span className="text-red-400">*</span>
               </label>
               <select
                 id="category"
@@ -167,18 +216,22 @@ export default function AddTaskModal({
                 value={newTask.category}
                 onChange={handleInputChange}
                 disabled={loadingCategories}
+                required
                 className="w-full p-3 rounded-lg text-black bg-white border border-gray-300 appearance-none focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loadingCategories ? (
                   <option>Loading...</option>
                 ) : categories.length === 0 ? (
-                  <option>No categories</option>
+                  <option value="">No categories</option>
                 ) : (
-                  categories.map((cat) => (
-                    <option key={cat.id} value={cat.categoryName}>
-                      {cat.categoryName}
-                    </option>
-                  ))
+                  <>
+                    {!newTask.category && <option value="">เลือกหมวดหมู่</option>}
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.categoryName}>
+                        {cat.categoryName}
+                      </option>
+                    ))}
+                  </>
                 )}
               </select>
             </div>
@@ -187,7 +240,7 @@ export default function AddTaskModal({
           {/* Deadline */}
           <div className="mb-6">
             <label htmlFor="deadline" className="block text-sm font-semibold mb-1">
-              กำหนดส่ง (Deadline)
+              กำหนดส่ง (Deadline) <span className="text-red-400">*</span>
             </label>
             <input
               id="deadline"
@@ -211,7 +264,8 @@ export default function AddTaskModal({
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 bg-[#f0a69a] text-[#593831] font-bold px-4 py-2 rounded-lg hover:bg-[#ffc2b8] transition-all duration-200 shadow-md"
+              disabled={loadingCategories}
+              className="flex items-center gap-2 bg-[#f0a69a] text-[#593831] font-bold px-4 py-2 rounded-lg hover:bg-[#ffc2b8] transition-all duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save size={20} /> บันทึกงาน
             </button>

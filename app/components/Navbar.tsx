@@ -96,7 +96,7 @@ export default function Navbar() {
         return {
           id: category.id,
           name: categoryName,
-          count: categoryTasks.length,
+          count: categoryTasks.length || 0,
         };
       });
 
@@ -238,9 +238,7 @@ export default function Navbar() {
                   <ListTodo size={18} />
                   <span>{category.name}</span>
                   <div className="ml-auto flex items-center gap-2">
-                    {category.count > 0 && (
-                      <span className="text-sm text-gray-400 group-hover:hidden">{category.count}</span>
-                    )}
+                    <span className="text-sm text-gray-400 group-hover:hidden">{category.count}</span>
                     <Trash2 size={16} className="text-gray-500 hidden group-hover:block hover:cursor-pointer hover:text-red-400" />
                   </div>
                 </button>
@@ -344,9 +342,7 @@ export default function Navbar() {
                       <ListTodo size={18} />
                       <span>{category.name}</span>
                       <div className="ml-auto flex items-center gap-2">
-                        {category.count > 0 && (
-                          <span className="text-sm text-gray-400 group-hover:hidden">{category.count}</span>
-                        )}
+                        <span className="text-sm text-gray-400 group-hover:hidden">{category.count}</span>
                         <Trash2 size={16} className="hover:cursor-pointer text-gray-500 hidden group-hover:block hover:text-red-400" />
                       </div>
                     </button>

@@ -51,8 +51,8 @@ function TaskPageInner() {
   const [newTask, setNewTask] = useState<NewTask>({
     title: '',
     description: '',
-    priority: '2',
-    category: 'Subject 1',
+    priority: '1',
+    category: '',
     deadline: '',
   });
 
@@ -95,16 +95,40 @@ function TaskPageInner() {
 
   const handleSaveTask = async () => {
     try {
+      // Validate before sending
+      if (!newTask.title.trim()) {
+        alert('กรุณากรอกชื่องาน');
+        return;
+      }
+      
+      if (!newTask.category) {
+        alert('กรุณาเลือกหมวดหมู่');
+        return;
+      }
+      
+      if (!newTask.deadline) {
+        alert('กรุณาเลือกกำหนดส่ง');
+        return;
+      }
+
       const deadlineDate = new Date(newTask.deadline);
       
+      // Validate date
+      if (isNaN(deadlineDate.getTime())) {
+        alert('รูปแบบวันที่ไม่ถูกต้อง');
+        return;
+      }
+      
       const taskData = {
-        taskName: newTask.title,
-        description: newTask.description,
-        category: newTask.category,
+        taskName: newTask.title.trim(),
+        description: newTask.description.trim(),
+        category: newTask.category.trim(),
         priorityLevel: parseInt(newTask.priority),
         deadLine: deadlineDate.toISOString(),
         isFinished: false,
       };
+
+      console.log('📤 Sending task data:', taskData);
 
       const response = await fetch('/api/task/addtask', {
         method: 'POST',
@@ -115,25 +139,31 @@ function TaskPageInner() {
         body: JSON.stringify(taskData),
       });
 
+      const responseData = await response.json();
+      console.log('📥 Response:', responseData);
+
       if (!response.ok) {
-        throw new Error('Failed to add task');
+        throw new Error(responseData.error || responseData.details || 'Failed to add task');
       }
 
+      // Success!
       setShowAddModal(false);
       
+      // Reset form
       setNewTask({
         title: '',
         description: '',
-        priority: '2',
-        category: 'Subject 1',
+        priority: '1',
+        category: '',
         deadline: '',
       });
       
-      fetchTasks();
+      // Refresh tasks
+      await fetchTasks();
       
       alert('เพิ่มงานสำเร็จ!');
     } catch (err: any) {
-      console.error('Error adding task:', err);
+      console.error('❌ Error adding task:', err);
       alert('เพิ่มงานไม่สำเร็จ: ' + err.message);
     }
   };
