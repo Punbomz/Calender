@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Calendar, Clock, AlertCircle, Plus, Edit2 } from 'lucide-react';
 import AddTaskModal from './AddTask';
 import EditTaskModal from './EditTask';
+import { useTaskUpdate } from '../contexts/TaskContext';
 
 interface Task {
   id: string;
@@ -40,6 +41,7 @@ function TaskPageInner() {
   const searchParams = useSearchParams();
   const viewParam = searchParams.get('view');
   const categoryParam = searchParams.get('category');
+  const { triggerTaskUpdate } = useTaskUpdate();
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,6 +163,9 @@ function TaskPageInner() {
       // Refresh tasks
       await fetchTasks();
       
+      // Trigger navbar update
+      triggerTaskUpdate();
+      
       alert('เพิ่มงานสำเร็จ!');
     } catch (err: any) {
       console.error('❌ Error adding task:', err);
@@ -184,26 +189,39 @@ function TaskPageInner() {
     setShowEditModal(true);
   };
 
-  const handleSaveEditedTask = (updatedTask: EditTask) => {
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === updatedTask.id
-          ? {
-              ...task,
-              taskName: updatedTask.title,
-              description: updatedTask.description,
-              priorityLevel: parseInt(updatedTask.priority),
-              category: updatedTask.category,
-              deadLine: {
-                _seconds: Math.floor(new Date(updatedTask.deadline).getTime() / 1000),
-                _nanoseconds: 0,
-              },
-            }
-          : task
-      )
-    );
-    setShowEditModal(false);
-    setEditingTask(null);
+  const handleSaveEditedTask = async (updatedTask: EditTask) => {
+    try {
+      // Update local state immediately for better UX
+      setTasks(prevTasks =>
+        prevTasks.map(task =>
+          task.id === updatedTask.id
+            ? {
+                ...task,
+                taskName: updatedTask.title,
+                description: updatedTask.description,
+                priorityLevel: parseInt(updatedTask.priority),
+                category: updatedTask.category,
+                deadLine: {
+                  _seconds: Math.floor(new Date(updatedTask.deadline).getTime() / 1000),
+                  _nanoseconds: 0,
+                },
+              }
+            : task
+        )
+      );
+      
+      setShowEditModal(false);
+      setEditingTask(null);
+      
+      // Trigger navbar update
+      triggerTaskUpdate();
+      
+      // Optionally refresh from server to ensure sync
+      await fetchTasks();
+    } catch (err: any) {
+      console.error('Error updating task:', err);
+      alert('แก้ไขงานไม่สำเร็จ');
+    }
   };
 
   const timestampToDate = (timestamp: { _seconds: number; _nanoseconds: number }) => {
@@ -237,17 +255,22 @@ function TaskPageInner() {
   };
 
   const handleCheckboxChange = async (taskId: string, currentStatus: boolean) => {
+    // Update local state immediately
     setTasks(prevTasks =>
       prevTasks.map(task =>
         task.id === taskId ? { ...task, isFinished: !currentStatus } : task
       )
     );
+    
+    // Trigger navbar update
+    triggerTaskUpdate();
   };
 
   const handleDeleteTask = async (taskId: string) => {
     const ok = confirm("ลบงานนี้จริงไหม?");
     if (!ok) return;
 
+    // Optimistically remove from UI
     setTasks(prev => prev.filter(t => t.id !== taskId));
     const userId = auth.currentUser?.uid;
 
@@ -258,7 +281,11 @@ function TaskPageInner() {
         credentials: "include",
         body: JSON.stringify({ taskId, userId }),
       });
+      
       if (!res.ok) throw new Error("Delete failed");
+      
+      // Trigger navbar update
+      triggerTaskUpdate();
     } catch (e) {
       alert("ลบไม่สำเร็จ จะรีโหลดรายการให้ใหม่");
       fetchTasks();

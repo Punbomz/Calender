@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTaskUpdate } from '../contexts/TaskContext';
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Menu, Calendar, FileText, User, Plus, Trash2, ChevronDown, ChevronRight, Tag, CheckSquare, Inbox, ListTodo } from 'lucide-react';
 import CreateCategoryModal from './CreateCategoryModal';
@@ -20,6 +21,7 @@ export default function Navbar() {
   const searchParams = useSearchParams();
   const view = searchParams.get("view");
   const categoryParam = searchParams.get("category");
+  const { taskUpdateTrigger } = useTaskUpdate();
   
   const [activeSection, setActiveSection] = useState<NavSection>('tasks');
   const [isTaskExpanded, setIsTaskExpanded] = useState(true);
@@ -39,6 +41,10 @@ export default function Navbar() {
       setActiveSection('tasks');
     }
   }, [pathname]);
+
+  useEffect(() => {
+    fetchTasksAndCategories();
+  }, [taskUpdateTrigger]);
 
   // Fetch tasks and categories
   const fetchTasksAndCategories = async () => {
