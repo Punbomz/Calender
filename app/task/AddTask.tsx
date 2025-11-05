@@ -197,7 +197,7 @@ export default function AddTaskModal({
                 name="priority"
                 value={newTask.priority}
                 onChange={handleInputChange}
-                className="w-full p-3 rounded-lg text-black bg-white border border-gray-300 appearance-none focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200"
+                className="hover: cursor-pointer w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200"
               >
                 <option value="3">High</option>
                 <option value="2">Medium</option>
@@ -217,7 +217,7 @@ export default function AddTaskModal({
                 onChange={handleInputChange}
                 disabled={loadingCategories}
                 required
-                className="w-full p-3 rounded-lg text-black bg-white border border-gray-300 appearance-none focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="hover: cursor-pointer w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loadingCategories ? (
                   <option>Loading...</option>
@@ -249,7 +249,7 @@ export default function AddTaskModal({
               value={newTask.deadline}
               onChange={handleInputChange}
               required
-              className="w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200"
+              className="hover: cursor-pointer w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200"
             />
           </div>
 
@@ -258,14 +258,14 @@ export default function AddTaskModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex items-center gap-2 bg-white/20 text-white font-bold px-4 py-2 rounded-lg hover:bg-white/30 transition-all duration-200"
+              className="hover: cursor-pointer flex items-center gap-2 bg-white/20 text-white font-bold px-4 py-2 rounded-lg hover:bg-white/30 transition-all duration-200"
             >
               <LogOut size={20} /> ยกเลิก
             </button>
             <button
               type="submit"
               disabled={loadingCategories}
-              className="flex items-center gap-2 bg-[#f0a69a] text-[#593831] font-bold px-4 py-2 rounded-lg hover:bg-[#ffc2b8] transition-all duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className="hover: cursor-pointer flex items-center gap-2 bg-[#f0a69a] text-[#593831] font-bold px-4 py-2 rounded-lg hover:bg-[#ffc2b8] transition-all duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save size={20} /> บันทึกงาน
             </button>
