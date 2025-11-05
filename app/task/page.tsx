@@ -493,7 +493,10 @@ function TaskPageInner() {
                 <div className="flex items-center gap-3 mb-3">
                   <div className="flex-shrink-0 mt-1">
                     <button
-                      onClick={() => handleCheckboxChange(task.id, task.isFinished)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCheckboxChange(task.id, task.isFinished);
+                      }}
                       className="w-7 h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all hover:cursor-pointer"
                     >
                       {task.isFinished && (
@@ -562,7 +565,10 @@ function TaskPageInner() {
                     <div className="flex items-center gap-3 mb-3">
                       <div className="flex-shrink-0 mt-1">
                         <button
-                          onClick={() => handleCheckboxChange(task.id, task.isFinished)}
+                            onClick={(e) => {
+                            e.stopPropagation();
+                            handleCheckboxChange(task.id, task.isFinished);
+                          }}
                           className="w-7 h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all"
                         >
                           {task.isFinished && (
