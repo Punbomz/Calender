@@ -1,11 +1,12 @@
 'use client';
 
 import { auth } from '@/lib/firebaseClient';
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Calendar, Clock, AlertCircle, Plus, Edit2 } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, Plus, MoreHorizontal, Trash2 } from 'lucide-react';
 import AddTaskModal from './AddTask';
 import EditTaskModal from './EditTask';
+import { useTaskUpdate } from '../contexts/TaskContext';
 
 interface Task {
   id: string;
@@ -18,7 +19,6 @@ interface Task {
   priorityLevel: number;
 }
 
-// Interface สำหรับ newTask
 interface NewTask {
   title: string;
   description: string;
@@ -27,7 +27,6 @@ interface NewTask {
   deadline: string;
 }
 
-// Interface สำหรับ EditTask (ตรงกับที่ EditTaskModal ต้องการ)
 interface EditTask {
   id: string;
   title: string;
@@ -41,6 +40,8 @@ interface EditTask {
 function TaskPageInner() {
   const searchParams = useSearchParams();
   const viewParam = searchParams.get('view');
+  const categoryParam = searchParams.get('category');
+  const { triggerTaskUpdate } = useTaskUpdate();
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,17 +49,15 @@ function TaskPageInner() {
   const [filterType, setFilterType] = useState<'all' | 'deadline' | 'priority'>('all');
   const [showFinished, setShowFinished] = useState(false);
   
-  // State สำหรับ Add Modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTask, setNewTask] = useState<NewTask>({
     title: '',
     description: '',
-    priority: '2',
-    category: 'Subject 1',
+    priority: '1',
+    category: '',
     deadline: '',
   });
 
-  // State สำหรับ Edit Modal
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingTask, setEditingTask] = useState<EditTask | null>(null);
 
@@ -98,16 +97,40 @@ function TaskPageInner() {
 
   const handleSaveTask = async () => {
     try {
+      // Validate before sending
+      if (!newTask.title.trim()) {
+        alert('กรุณากรอกชื่องาน');
+        return;
+      }
+      
+      if (!newTask.category) {
+        alert('กรุณาเลือกหมวดหมู่');
+        return;
+      }
+      
+      if (!newTask.deadline) {
+        alert('กรุณาเลือกกำหนดส่ง');
+        return;
+      }
+
       const deadlineDate = new Date(newTask.deadline);
       
+      // Validate date
+      if (isNaN(deadlineDate.getTime())) {
+        alert('รูปแบบวันที่ไม่ถูกต้อง');
+        return;
+      }
+      
       const taskData = {
-        taskName: newTask.title,
-        description: newTask.description,
-        category: newTask.category,
+        taskName: newTask.title.trim(),
+        description: newTask.description.trim(),
+        category: newTask.category.trim(),
         priorityLevel: parseInt(newTask.priority),
         deadLine: deadlineDate.toISOString(),
         isFinished: false,
       };
+
+      console.log('📤 Sending task data:', taskData);
 
       const response = await fetch('/api/task/addtask', {
         method: 'POST',
@@ -118,34 +141,41 @@ function TaskPageInner() {
         body: JSON.stringify(taskData),
       });
 
+      const responseData = await response.json();
+      console.log('📥 Response:', responseData);
+
       if (!response.ok) {
-        throw new Error('Failed to add task');
+        throw new Error(responseData.error || responseData.details || 'Failed to add task');
       }
 
+      // Success!
       setShowAddModal(false);
       
+      // Reset form
       setNewTask({
         title: '',
         description: '',
-        priority: '2',
-        category: 'Subject 1',
+        priority: '1',
+        category: '',
         deadline: '',
       });
       
-      fetchTasks();
+      // Refresh tasks
+      await fetchTasks();
+      
+      // Trigger navbar update
+      triggerTaskUpdate();
       
       alert('เพิ่มงานสำเร็จ!');
     } catch (err: any) {
-      console.error('Error adding task:', err);
+      console.error('❌ Error adding task:', err);
       alert('เพิ่มงานไม่สำเร็จ: ' + err.message);
     }
   };
 
-  // ฟังก์ชันสำหรับเปิด Edit Modal
   const handleEditTask = (task: Task) => {
-    // แปลง Task จาก API format เป็น EditTask format
     const deadlineDate = timestampToDate(task.deadLine);
-    const formattedDeadline = deadlineDate.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:mm
+    const formattedDeadline = deadlineDate.toISOString().slice(0, 16);
 
     setEditingTask({
       id: task.id,
@@ -159,28 +189,39 @@ function TaskPageInner() {
     setShowEditModal(true);
   };
 
-  // ฟังก์ชันสำหรับบันทึกการแก้ไข
-  const handleSaveEditedTask = (updatedTask: EditTask) => {
-    // อัพเดท tasks ใน state
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === updatedTask.id
-          ? {
-              ...task,
-              taskName: updatedTask.title,
-              description: updatedTask.description,
-              priorityLevel: parseInt(updatedTask.priority),
-              category: updatedTask.category,
-              deadLine: {
-                _seconds: Math.floor(new Date(updatedTask.deadline).getTime() / 1000),
-                _nanoseconds: 0,
-              },
-            }
-          : task
-      )
-    );
-    setShowEditModal(false);
-    setEditingTask(null);
+  const handleSaveEditedTask = async (updatedTask: EditTask) => {
+    try {
+      // Update local state immediately for better UX
+      setTasks(prevTasks =>
+        prevTasks.map(task =>
+          task.id === updatedTask.id
+            ? {
+                ...task,
+                taskName: updatedTask.title,
+                description: updatedTask.description,
+                priorityLevel: parseInt(updatedTask.priority),
+                category: updatedTask.category,
+                deadLine: {
+                  _seconds: Math.floor(new Date(updatedTask.deadline).getTime() / 1000),
+                  _nanoseconds: 0,
+                },
+              }
+            : task
+        )
+      );
+      
+      setShowEditModal(false);
+      setEditingTask(null);
+      
+      // Trigger navbar update
+      triggerTaskUpdate();
+      
+      // Optionally refresh from server to ensure sync
+      await fetchTasks();
+    } catch (err: any) {
+      console.error('Error updating task:', err);
+      alert('แก้ไขงานไม่สำเร็จ');
+    }
   };
 
   const timestampToDate = (timestamp: { _seconds: number; _nanoseconds: number }) => {
@@ -214,17 +255,102 @@ function TaskPageInner() {
   };
 
   const handleCheckboxChange = async (taskId: string, currentStatus: boolean) => {
+    // Update local state immediately for better UX
     setTasks(prevTasks =>
       prevTasks.map(task =>
         task.id === taskId ? { ...task, isFinished: !currentStatus } : task
       )
     );
+    
+    try {
+      // Update in database
+      const response = await fetch('/api/task/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          taskId,
+          isFinished: !currentStatus,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update task');
+      }
+
+      // Trigger navbar update
+      triggerTaskUpdate();
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      alert('อัพเดทสถานะไม่สำเร็จ');
+      // Revert local state on error
+      setTasks(prevTasks =>
+        prevTasks.map(task =>
+          task.id === taskId ? { ...task, isFinished: currentStatus } : task
+        )
+      );
+    }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    const ok = confirm("ลบงานนี้จริงไหม?");
-    if (!ok) return;
+  function TaskMenuButton({ taskId, taskName, handleDeleteTask }: any) {
+    const [showMenu, setShowMenu] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
 
+    // Close menu when clicking outside
+    useEffect(() => {
+      function handleClickOutside(event: MouseEvent) {
+        if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+          setShowMenu(false);
+        }
+      }
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Confirm and delete
+    const confirmDelete = () => {
+      const confirmed = window.confirm(`ยืนยันที่จะลบงาน "${taskName}" หรือไม่?`);
+      if (confirmed) handleDeleteTask(taskId);
+    };
+
+    return (
+      <div className="relative inline-block" ref={menuRef}>
+        {/* 3 Dots Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowMenu((prev) => !prev);
+          }}
+          className="hover:cursor-pointer p-2 rounded-md text-white hover:bg-white/20 transition"
+          aria-label={`Options for ${taskName}`}
+        >
+          <MoreHorizontal size={18} />
+        </button>
+
+        {/* Popup Menu */}
+        {showMenu && (
+          <div
+            className="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                setShowMenu(false);
+                confirmDelete();
+              }}
+              className="hover: cursor-pointer w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-red-50 hover:text-red-600 transition"
+            >
+              <Trash2 size={16} />
+              Delete
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const handleDeleteTask = async (taskId: string) => {
+    // Optimistically remove from UI
     setTasks(prev => prev.filter(t => t.id !== taskId));
     const userId = auth.currentUser?.uid;
 
@@ -235,18 +361,39 @@ function TaskPageInner() {
         credentials: "include",
         body: JSON.stringify({ taskId, userId }),
       });
+      
       if (!res.ok) throw new Error("Delete failed");
+      
+      // Trigger navbar update
+      triggerTaskUpdate();
     } catch (e) {
       alert("ลบไม่สำเร็จ จะรีโหลดรายการให้ใหม่");
       fetchTasks();
     }
   };
 
+  // Filter tasks based on view and category
   const isCompletedView = viewParam === 'completed';
-  const displayTasks = isCompletedView 
-    ? tasks.filter(task => task.isFinished)
-    : tasks.filter(task => !task.isFinished);
+  
+  let displayTasks = tasks;
+  
+  // Filter by completion status
+  if (isCompletedView) {
+    displayTasks = displayTasks.filter(task => task.isFinished);
+  } else {
+    displayTasks = displayTasks.filter(task => !task.isFinished);
+  }
+  
+  // Filter by category if category parameter exists
+  if (categoryParam) {
+    displayTasks = displayTasks.filter(task => task.category === categoryParam);
+  }
+  
   const finishedTasks = tasks.filter(task => task.isFinished);
+  // Also filter finished tasks by category if needed
+  const filteredFinishedTasks = categoryParam 
+    ? finishedTasks.filter(task => task.category === categoryParam)
+    : finishedTasks;
 
   const sortedDisplayTasks = [...displayTasks].sort((a, b) => {
     if (filterType === 'deadline') {
@@ -257,6 +404,15 @@ function TaskPageInner() {
     }
     return 0;
   });
+
+  // Get view title
+  const getViewTitle = () => {
+    if (isCompletedView) return 'Completed Tasks';
+    if (categoryParam) return categoryParam;
+    return null;
+  };
+
+  const viewTitle = getViewTitle();
 
   if (loading) {
     return (
@@ -306,8 +462,16 @@ function TaskPageInner() {
   return (
     <div className="min-h-screen bg-gray-200 p-6">
       <div className="max-w-3xl mx-auto">
-        {/* Filter Buttons */}
-        {!isCompletedView && (
+        {/* View Title */}
+        {viewTitle && (
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">{viewTitle}</h1>
+            <p className="text-sm text-gray-600 mt-1">{sortedDisplayTasks.length} task(s)</p>
+          </div>
+        )}
+
+        {/* Filter Buttons - Only show when not in completed view and no category selected */}
+        {!isCompletedView && !categoryParam && (
           <div className="flex gap-10 mb-6 justify-center">
             <button
               onClick={() => setFilterType('all')}
@@ -342,20 +506,57 @@ function TaskPageInner() {
           </div>
         )}
 
-        {isCompletedView && (
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">Completed Tasks</h1>
-            <p className="text-sm text-gray-600 mt-1">{sortedDisplayTasks.length} task(s) completed</p>
+        {/* Filter Buttons - Show when category is selected but not completed view */}
+        {!isCompletedView && categoryParam && (
+          <div className="flex gap-10 mb-6 justify-center">
+            <button
+              onClick={() => setFilterType('all')}
+              className={`px-6 py-2 rounded-full font-semibold transition-colors hover:cursor-pointer ${
+                filterType === 'all'
+                  ? 'bg-black text-white'
+                  : 'bg-gray-400 text-white hover:bg-gray-500'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setFilterType('deadline')}
+              className={`px-6 py-2 rounded-full font-semibold transition-colors hover:cursor-pointer ${
+                filterType === 'deadline'
+                  ? 'bg-black text-white'
+                  : 'bg-gray-400 text-white hover:bg-gray-500'
+              }`}
+            >
+              Deadline
+            </button>
+            <button
+              onClick={() => setFilterType('priority')}
+              className={`px-6 py-2 rounded-full font-semibold transition-colors hover:cursor-pointer ${
+                filterType === 'priority'
+                  ? 'bg-black text-white'
+                  : 'bg-gray-400 text-white hover:bg-gray-500'
+              }`}
+            >
+              Priority
+            </button>
           </div>
         )}
 
         {sortedDisplayTasks.length === 0 ? (
           <div className="text-center text-gray-500 py-12">
             <p className="text-xl">
-              {isCompletedView ? 'No completed tasks' : 'No tasks found'}
+              {isCompletedView 
+                ? 'No completed tasks' 
+                : categoryParam 
+                ? `No tasks in "${categoryParam}"` 
+                : 'No tasks found'}
             </p>
             <p className="text-sm mt-2">
-              {isCompletedView ? 'Complete some tasks to see them here!' : 'Create your first task to get started!'}
+              {isCompletedView 
+                ? 'Complete some tasks to see them here!' 
+                : categoryParam
+                ? `Create tasks in "${categoryParam}" category to see them here!`
+                : 'Create your first task to get started!'}
             </p>
           </div>
         ) : (
@@ -363,14 +564,19 @@ function TaskPageInner() {
             {sortedDisplayTasks.map((task) => (
               <div
                 key={task.id}
-                className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md ${
+                className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md hover:cursor-pointer ${
                   isCompletedView ? 'opacity-75' : ''
                 }`}
+                onClick={() => handleEditTask(task)}
+                aria-label={`Edit ${task.taskName}`}
               >
                 <div className="flex items-center gap-3 mb-3">
                   <div className="flex-shrink-0 mt-1">
                     <button
-                      onClick={() => handleCheckboxChange(task.id, task.isFinished)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCheckboxChange(task.id, task.isFinished);
+                      }}
                       className="w-7 h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all hover:cursor-pointer"
                     >
                       {task.isFinished && (
@@ -390,31 +596,20 @@ function TaskPageInner() {
                       )}
                     </button>
                   </div>
-                  <div className="flex-1 min-w-0 flex items-baseline justify-between">
+                  <div className="flex-1 min-w-0 flex items-center justify-between">
                     <h3 className={`text-xl font-bold leading-tight ${isCompletedView ? 'line-through' : ''}`}>
                       {task.taskName}
                     </h3>
                     <div className="flex items-center gap-2 ml-4 whitespace-nowrap">
+                      <Calendar size={18} />
                       <p className="text-sm opacity-90">{formatDate(task.deadLine)}</p>
-                      {!isCompletedView && (
-                        <button
-                          onClick={() => handleEditTask(task)}
-                          className="p-1.5 rounded-md hover:bg-white/20 transition-all"
-                          aria-label={`Edit ${task.taskName}`}
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="mb-3">
-                  <p className="text-base font-semibold mb-1">Description</p>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm opacity-90 flex-1">{task.description || 'No description'}</p>
-                    <div className="flex items-center gap-1.5 ml-4">
                       <Clock className="w-4 h-4" />
                       <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
+                      <TaskMenuButton
+                        taskId={task.id}
+                        taskName={task.taskName}
+                        handleDeleteTask={handleDeleteTask}
+                      />
                     </div>
                   </div>
                 </div>
@@ -423,7 +618,8 @@ function TaskPageInner() {
           </div>
         )}
 
-        {!isCompletedView && finishedTasks.length > 0 && (
+        {/* Completed Tasks Section - Only show when not in completed view */}
+        {!isCompletedView && filteredFinishedTasks.length > 0 && (
           <div className="mt-6">
             <button
               onClick={() => setShowFinished(!showFinished)}
@@ -431,7 +627,7 @@ function TaskPageInner() {
             >
               <span>Completed</span>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold">{finishedTasks.length}</span>
+                <span className="text-sm font-bold">{filteredFinishedTasks.length}</span>
                 <svg 
                   className={`w-4 h-4 transition-transform ${showFinished ? 'rotate-180' : ''}`} 
                   fill="none" 
@@ -445,15 +641,20 @@ function TaskPageInner() {
 
             {showFinished && (
               <div className="space-y-4 mt-4">
-                {finishedTasks.map((task) => (
+                {filteredFinishedTasks.map((task) => (
                   <div
                     key={task.id}
-                    className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md opacity-75`}
+                    className={`${getCardColor(task.priorityLevel)} hover:cursor-pointer rounded-2xl p-5 text-white shadow-md opacity-75`}
+                    onClick={() => handleEditTask(task)}
+                    aria-label={`Edit ${task.taskName}`}
                   >
                     <div className="flex items-center gap-3 mb-3">
                       <div className="flex-shrink-0 mt-1">
                         <button
-                          onClick={() => handleCheckboxChange(task.id, task.isFinished)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCheckboxChange(task.id, task.isFinished);
+                          }}
                           className="w-7 h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all"
                         >
                           {task.isFinished && (
@@ -473,25 +674,18 @@ function TaskPageInner() {
                           )}
                         </button>
                       </div>
-                      <div className="flex-1 min-w-0 flex items-baseline justify-between">
+                      <div className="flex-1 min-w-0 flex items-center justify-between">
                         <h3 className="text-xl font-bold leading-tight line-through">{task.taskName}</h3>
-                        <p className="text-sm opacity-90 ml-4 whitespace-nowrap">{formatDate(task.deadLine)}</p>
-                      </div>
-                    </div>
-                    <div className="mb-3">
-                      <p className="text-base font-semibold mb-1">Description</p>
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm opacity-90 flex-1">{task.description || 'No description'}</p>
-                        <div className="flex items-center gap-1.5 ml-4">
+                        <div className="flex items-center gap-2 ml-4 whitespace-nowrap">
+                          <Calendar size={18} />
+                          <p className="text-sm opacity-90">{formatDate(task.deadLine)}</p>
                           <Clock className="w-4 h-4" />
                           <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
-                          <button
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="ml-3 px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-sm border border-white/30"
-                            aria-label={`Delete ${task.taskName}`}
-                          >
-                            Delete
-                          </button>
+                          <TaskMenuButton
+                            taskId={task.id}
+                            taskName={task.taskName}
+                            handleDeleteTask={handleDeleteTask}
+                          />
                         </div>
                       </div>
                     </div>
