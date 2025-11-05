@@ -19,16 +19,13 @@ export default function Navbar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const view = searchParams.get("view");
+  const categoryParam = searchParams.get("category");
   
   const [activeSection, setActiveSection] = useState<NavSection>('tasks');
   const [isTaskExpanded, setIsTaskExpanded] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([
-    { id: 1, name: 'YouTube', count: 12},
-    { id: 2, name: 'To Do', count: 0},
-    { id: 3, name: 'Work', count: 3},
-  ]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [allTasksCount, setAllTasksCount] = useState(0);
   const [completedTasksCount, setCompletedTasksCount] = useState(0);
 
@@ -43,38 +40,76 @@ export default function Navbar() {
     }
   }, [pathname]);
 
-  // Fetch tasks data
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const response = await fetch('/api/task/gettask', {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+  // Fetch tasks and categories
+  const fetchTasksAndCategories = async () => {
+    try {
+      // Fetch all tasks
+      const tasksResponse = await fetch('/api/task/gettask', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const tasks = data.tasks || [];
-        
-        // Count all active tasks (not finished)
-        const activeTasks = tasks.filter((task: any) => !task.isFinished);
-        setAllTasksCount(activeTasks.length);
-        
-        // Count completed tasks
-        const completedTasks = tasks.filter((task: any) => task.isFinished);
-        setCompletedTasksCount(completedTasks.length);
-      } catch (err) {
-        console.error('Error fetching tasks:', err);
+      if (!tasksResponse.ok) {
+        throw new Error(`Failed to fetch tasks: ${tasksResponse.status}`);
       }
-    };
 
-    fetchTasks();
+      const tasksData = await tasksResponse.json();
+      const tasks = tasksData.tasks || [];
+      
+      // Count all active tasks (not finished)
+      const activeTasks = tasks.filter((task: any) => !task.isFinished);
+      setAllTasksCount(activeTasks.length);
+      
+      // Count completed tasks
+      const completedTasks = tasks.filter((task: any) => task.isFinished);
+      setCompletedTasksCount(completedTasks.length);
+
+      // Fetch categories
+      const categoriesResponse = await fetch('/api/task/getAllCategory', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!categoriesResponse.ok) {
+        throw new Error(`Failed to fetch categories: ${categoriesResponse.status}`);
+      }
+
+      const categoriesData = await categoriesResponse.json();
+      const fetchedCategories = categoriesData.categories || [];
+
+      console.log("Fetched categories data:", categoriesData);
+      console.log("Categories array:", fetchedCategories);
+      console.log("Active tasks:", activeTasks);
+
+      // Count tasks for each category
+      const categoriesWithCount = fetchedCategories.map((category: any) => {
+        // Use categoryName field from Firestore
+        const categoryName = category.categoryName || category.name;
+        const categoryTasks = activeTasks.filter((task: any) => task.category === categoryName);
+        console.log(`Category "${categoryName}" has ${categoryTasks.length} tasks`);
+        return {
+          id: category.id,
+          name: categoryName,
+          count: categoryTasks.length,
+        };
+      });
+
+      console.log("Categories with count:", categoriesWithCount);
+      setCategories(categoriesWithCount);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+    }
+  };
+
+  // Fetch data on mount
+  useEffect(() => {
+    fetchTasksAndCategories();
   }, []);
 
   // Add blur effect to body when sidebar is open
@@ -96,10 +131,15 @@ export default function Navbar() {
     setIsMobileSidebarOpen(false); // Close mobile sidebar after navigation
   };
 
+  const handleCategoryClick = (categoryName: string) => {
+    router.push(`/task?category=${encodeURIComponent(categoryName)}`);
+    setIsMobileSidebarOpen(false);
+  };
+
   const handleCreateCategory = (name: string) => {
     console.log("Category created:", name);
-    // Add logic here to refresh categories or update state
-    // You might want to fetch categories again or add the new category to state
+    // Refresh categories after creating a new one
+    fetchTasksAndCategories();
   };
 
   return (
@@ -149,14 +189,14 @@ export default function Navbar() {
             <button 
               onClick={() => router.push('/task')}
               className={`w-full flex hover:cursor-pointer items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                pathname === '/task' && !view
+                pathname === '/task' && !view && !categoryParam
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-300 hover:bg-zinc-800'
               }`}
             >
               <Inbox size={18} />
               <span>All</span>
-              <span className="ml-auto text-sm text-white-500">{allTasksCount}</span>
+              <span className="ml-auto text-sm text-gray-400">{allTasksCount}</span>
             </button>
 
             <button 
@@ -169,7 +209,7 @@ export default function Navbar() {
             >
               <CheckSquare size={18} />
               <span>Completed</span>
-              <span className="ml-auto text-sm text-white-500">{completedTasksCount}</span>
+              <span className="ml-auto text-sm text-gray-400">{completedTasksCount}</span>
             </button>
           </div>
 
@@ -188,19 +228,18 @@ export default function Navbar() {
               {categories.map((category) => (
                 <button
                   key={category.id}
-                  className="w-full hover:cursor-pointer flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-zinc-800 rounded-lg transition-colors group"
+                  onClick={() => handleCategoryClick(category.name)}
+                  className={`w-full hover:cursor-pointer flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group ${
+                    categoryParam === category.name
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-300 hover:bg-zinc-800'
+                  }`}
                 >
                   <ListTodo size={18} />
                   <span>{category.name}</span>
                   <div className="ml-auto flex items-center gap-2">
                     {category.count > 0 && (
-                      <>
-                        <div className="w-2 h-2 rounded-full"></div>
-                        <span className="text-sm text-white-500 group-hover:hidden">{category.count}</span>
-                      </>
-                    )}
-                    {category.count === 0 && (
-                      <div className="w-2 h-2 rounded-full group-hover:hidden"></div>
+                      <span className="text-sm text-gray-400 group-hover:hidden">{category.count}</span>
                     )}
                     <Trash2 size={16} className="text-gray-500 hidden group-hover:block hover:cursor-pointer hover:text-red-400" />
                   </div>
@@ -262,14 +301,14 @@ export default function Navbar() {
                   <button 
                     onClick={() => router.push('/task')}
                     className={`w-full flex hover:cursor-pointer items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                      pathname === '/task' && !view
+                      pathname === '/task' && !view && !categoryParam
                         ? 'bg-blue-600 text-white'
                         : 'text-gray-300 hover:bg-zinc-800'
                     }`}
                   >
                     <Inbox size={18} />
                     <span>All</span>
-                    <span className="ml-auto text-sm text-white-500">{allTasksCount}</span>
+                    <span className="ml-auto text-sm text-gray-400">{allTasksCount}</span>
                   </button>
 
                   <button 
@@ -282,7 +321,7 @@ export default function Navbar() {
                   >
                     <CheckSquare size={18} />
                     <span>Completed</span>
-                    <span className="ml-auto text-sm text-white-500">{completedTasksCount}</span>
+                    <span className="ml-auto text-sm text-gray-400">{completedTasksCount}</span>
                   </button>
                 </div>
 
@@ -295,19 +334,18 @@ export default function Navbar() {
                   {categories.map((category) => (
                     <button
                       key={category.id}
-                      className="hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-zinc-800 rounded-lg transition-colors group"
+                      onClick={() => handleCategoryClick(category.name)}
+                      className={`hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group ${
+                        categoryParam === category.name
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-300 hover:bg-zinc-800'
+                      }`}
                     >
                       <ListTodo size={18} />
                       <span>{category.name}</span>
                       <div className="ml-auto flex items-center gap-2">
                         {category.count > 0 && (
-                          <>
-                            <div className="w-2 h-2 rounded-full"></div>
-                            <span className="text-sm text-white-500 group-hover:hidden">{category.count}</span>
-                          </>
-                        )}
-                        {category.count === 0 && (
-                          <div className="w-2 h-2 rounded-full group-hover:hidden"></div>
+                          <span className="text-sm text-gray-400 group-hover:hidden">{category.count}</span>
                         )}
                         <Trash2 size={16} className="hover:cursor-pointer text-gray-500 hidden group-hover:block hover:text-red-400" />
                       </div>
