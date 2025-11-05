@@ -618,8 +618,8 @@ function TaskPageInner() {
           </div>
         )}
 
-        {/* Completed Tasks Section - Only show when not in completed view and not filtering by category */}
-        {!isCompletedView && !categoryParam && filteredFinishedTasks.length > 0 && (
+        {/* Completed Tasks Section - Only show when not in completed view */}
+        {!isCompletedView && filteredFinishedTasks.length > 0 && (
           <div className="mt-6">
             <button
               onClick={() => setShowFinished(!showFinished)}

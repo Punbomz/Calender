@@ -95,10 +95,9 @@ export default function Navbar() {
 
       // Count tasks for each category
       const categoriesWithCount = fetchedCategories.map((category: any) => {
-        // Use categoryName field from Firestore
         const categoryName = category.categoryName || category.name;
-        const categoryTasks = activeTasks.filter((task: any) => task.category === categoryName);
-        console.log(`Category "${categoryName}" has ${categoryTasks.length} tasks`);
+        const categoryTasks = tasks.filter((task: any) => task.category === categoryName);
+        // Now counts all tasks, including finished ones
         return {
           id: category.id,
           name: categoryName,
