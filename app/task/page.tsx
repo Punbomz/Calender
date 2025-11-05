@@ -698,7 +698,12 @@ function TaskPageInner() {
 
         {/* Add Button */}
         <button
-          className="fixed bottom-25 right-6 sm:bottom-25 sm:right-8 md:bottom-28 md:right-12 lg:bottom-32 lg:right-16 xl:bottom-10 xl:right-20 w-16 h-16 lg:w-20 lg:h-20 bg-black text-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-800 transition-all hover:scale-110 hover:cursor-pointer"
+          className="fixed bottom-25 right-6
+            sm:bottom-25 sm:right-8
+            md:bottom-28 md:right-8
+            lg:bottom-15 lg:right-15
+            xl:bottom-15 xl:right-15
+            w-16 h-16 lg:w-20 lg:h-20 bg-black text-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-800 transition-all hover:scale-110 hover:cursor-pointer"
           onClick={() => setShowAddModal(true)}
         >
           <Plus size={32} className="lg:w-10 lg:h-10" strokeWidth={2.5} />
