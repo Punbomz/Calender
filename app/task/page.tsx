@@ -1,9 +1,9 @@
 'use client';
 
 import { auth } from '@/lib/firebaseClient';
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Calendar, Clock, AlertCircle, Plus, Edit2 } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, Plus, MoreHorizontal, Trash2 } from 'lucide-react';
 import AddTaskModal from './AddTask';
 import EditTaskModal from './EditTask';
 import { useTaskUpdate } from '../contexts/TaskContext';
@@ -292,10 +292,64 @@ function TaskPageInner() {
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    const ok = confirm("ลบงานนี้จริงไหม?");
-    if (!ok) return;
+  function TaskMenuButton({ taskId, taskName, handleDeleteTask }: any) {
+    const [showMenu, setShowMenu] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
 
+    // Close menu when clicking outside
+    useEffect(() => {
+      function handleClickOutside(event: MouseEvent) {
+        if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+          setShowMenu(false);
+        }
+      }
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Confirm and delete
+    const confirmDelete = () => {
+      const confirmed = window.confirm(`ยืนยันที่จะลบงาน "${taskName}" หรือไม่?`);
+      if (confirmed) handleDeleteTask(taskId);
+    };
+
+    return (
+      <div className="relative inline-block" ref={menuRef}>
+        {/* 3 Dots Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowMenu((prev) => !prev);
+          }}
+          className="hover:cursor-pointer p-2 rounded-md text-white hover:bg-white/20 transition"
+          aria-label={`Options for ${taskName}`}
+        >
+          <MoreHorizontal size={18} />
+        </button>
+
+        {/* Popup Menu */}
+        {showMenu && (
+          <div
+            className="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                setShowMenu(false);
+                confirmDelete();
+              }}
+              className="hover: cursor-pointer w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-red-50 hover:text-red-600 transition"
+            >
+              <Trash2 size={16} />
+              Delete
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const handleDeleteTask = async (taskId: string) => {
     // Optimistically remove from UI
     setTasks(prev => prev.filter(t => t.id !== taskId));
     const userId = auth.currentUser?.uid;
@@ -547,9 +601,15 @@ function TaskPageInner() {
                       {task.taskName}
                     </h3>
                     <div className="flex items-center gap-2 ml-4 whitespace-nowrap">
+                      <Calendar size={18} />
                       <p className="text-sm opacity-90">{formatDate(task.deadLine)}</p>
                       <Clock className="w-4 h-4" />
                       <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
+                      <TaskMenuButton
+                        taskId={task.id}
+                        taskName={task.taskName}
+                        handleDeleteTask={handleDeleteTask}
+                      />
                     </div>
                   </div>
                 </div>
@@ -617,19 +677,15 @@ function TaskPageInner() {
                       <div className="flex-1 min-w-0 flex items-center justify-between">
                         <h3 className="text-xl font-bold leading-tight line-through">{task.taskName}</h3>
                         <div className="flex items-center gap-2 ml-4 whitespace-nowrap">
+                          <Calendar size={18} />
                           <p className="text-sm opacity-90">{formatDate(task.deadLine)}</p>
                           <Clock className="w-4 h-4" />
                           <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteTask(task.id);
-                            }}
-                            className="hover:cursor-pointer ml-3 px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-sm border border-white/30"
-                            aria-label={`Delete ${task.taskName}`}
-                          >
-                            Delete
-                          </button>
+                          <TaskMenuButton
+                            taskId={task.id}
+                            taskName={task.taskName}
+                            handleDeleteTask={handleDeleteTask}
+                          />
                         </div>
                       </div>
                     </div>
