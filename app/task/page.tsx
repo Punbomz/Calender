@@ -255,15 +255,41 @@ function TaskPageInner() {
   };
 
   const handleCheckboxChange = async (taskId: string, currentStatus: boolean) => {
-    // Update local state immediately
+    // Update local state immediately for better UX
     setTasks(prevTasks =>
       prevTasks.map(task =>
         task.id === taskId ? { ...task, isFinished: !currentStatus } : task
       )
     );
     
-    // Trigger navbar update
-    triggerTaskUpdate();
+    try {
+      // Update in database
+      const response = await fetch('/api/task/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          taskId,
+          isFinished: !currentStatus,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update task');
+      }
+
+      // Trigger navbar update
+      triggerTaskUpdate();
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      alert('อัพเดทสถานะไม่สำเร็จ');
+      // Revert local state on error
+      setTasks(prevTasks =>
+        prevTasks.map(task =>
+          task.id === taskId ? { ...task, isFinished: currentStatus } : task
+        )
+      );
+    }
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -484,7 +510,7 @@ function TaskPageInner() {
             {sortedDisplayTasks.map((task) => (
               <div
                 key={task.id}
-                className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md hover: cursor-pointer ${
+                className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md hover:cursor-pointer ${
                   isCompletedView ? 'opacity-75' : ''
                 }`}
                 onClick={() => handleEditTask(task)}
@@ -558,14 +584,14 @@ function TaskPageInner() {
                 {filteredFinishedTasks.map((task) => (
                   <div
                     key={task.id}
-                    className={`${getCardColor(task.priorityLevel)} hover: cursor-pointer rounded-2xl p-5 text-white shadow-md opacity-75`}
+                    className={`${getCardColor(task.priorityLevel)} hover:cursor-pointer rounded-2xl p-5 text-white shadow-md opacity-75`}
                     onClick={() => handleEditTask(task)}
                     aria-label={`Edit ${task.taskName}`}
                   >
                     <div className="flex items-center gap-3 mb-3">
                       <div className="flex-shrink-0 mt-1">
                         <button
-                            onClick={(e) => {
+                          onClick={(e) => {
                             e.stopPropagation();
                             handleCheckboxChange(task.id, task.isFinished);
                           }}
@@ -595,8 +621,11 @@ function TaskPageInner() {
                           <Clock className="w-4 h-4" />
                           <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
                           <button
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="hover: cursor-pointer ml-3 px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-sm border border-white/30"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteTask(task.id);
+                            }}
+                            className="hover:cursor-pointer ml-3 px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-sm border border-white/30"
                             aria-label={`Delete ${task.taskName}`}
                           >
                             Delete
