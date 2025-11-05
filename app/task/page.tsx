@@ -18,7 +18,6 @@ interface Task {
   priorityLevel: number;
 }
 
-// Interface สำหรับ newTask
 interface NewTask {
   title: string;
   description: string;
@@ -27,7 +26,6 @@ interface NewTask {
   deadline: string;
 }
 
-// Interface สำหรับ EditTask (ตรงกับที่ EditTaskModal ต้องการ)
 interface EditTask {
   id: string;
   title: string;
@@ -41,6 +39,7 @@ interface EditTask {
 function TaskPageInner() {
   const searchParams = useSearchParams();
   const viewParam = searchParams.get('view');
+  const categoryParam = searchParams.get('category');
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +47,6 @@ function TaskPageInner() {
   const [filterType, setFilterType] = useState<'all' | 'deadline' | 'priority'>('all');
   const [showFinished, setShowFinished] = useState(false);
   
-  // State สำหรับ Add Modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTask, setNewTask] = useState<NewTask>({
     title: '',
@@ -58,7 +56,6 @@ function TaskPageInner() {
     deadline: '',
   });
 
-  // State สำหรับ Edit Modal
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingTask, setEditingTask] = useState<EditTask | null>(null);
 
@@ -141,11 +138,9 @@ function TaskPageInner() {
     }
   };
 
-  // ฟังก์ชันสำหรับเปิด Edit Modal
   const handleEditTask = (task: Task) => {
-    // แปลง Task จาก API format เป็น EditTask format
     const deadlineDate = timestampToDate(task.deadLine);
-    const formattedDeadline = deadlineDate.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:mm
+    const formattedDeadline = deadlineDate.toISOString().slice(0, 16);
 
     setEditingTask({
       id: task.id,
@@ -159,9 +154,7 @@ function TaskPageInner() {
     setShowEditModal(true);
   };
 
-  // ฟังก์ชันสำหรับบันทึกการแก้ไข
   const handleSaveEditedTask = (updatedTask: EditTask) => {
-    // อัพเดท tasks ใน state
     setTasks(prevTasks =>
       prevTasks.map(task =>
         task.id === updatedTask.id
@@ -242,11 +235,28 @@ function TaskPageInner() {
     }
   };
 
+  // Filter tasks based on view and category
   const isCompletedView = viewParam === 'completed';
-  const displayTasks = isCompletedView 
-    ? tasks.filter(task => task.isFinished)
-    : tasks.filter(task => !task.isFinished);
+  
+  let displayTasks = tasks;
+  
+  // Filter by completion status
+  if (isCompletedView) {
+    displayTasks = displayTasks.filter(task => task.isFinished);
+  } else {
+    displayTasks = displayTasks.filter(task => !task.isFinished);
+  }
+  
+  // Filter by category if category parameter exists
+  if (categoryParam) {
+    displayTasks = displayTasks.filter(task => task.category === categoryParam);
+  }
+  
   const finishedTasks = tasks.filter(task => task.isFinished);
+  // Also filter finished tasks by category if needed
+  const filteredFinishedTasks = categoryParam 
+    ? finishedTasks.filter(task => task.category === categoryParam)
+    : finishedTasks;
 
   const sortedDisplayTasks = [...displayTasks].sort((a, b) => {
     if (filterType === 'deadline') {
@@ -257,6 +267,15 @@ function TaskPageInner() {
     }
     return 0;
   });
+
+  // Get view title
+  const getViewTitle = () => {
+    if (isCompletedView) return 'Completed Tasks';
+    if (categoryParam) return categoryParam;
+    return null;
+  };
+
+  const viewTitle = getViewTitle();
 
   if (loading) {
     return (
@@ -306,8 +325,16 @@ function TaskPageInner() {
   return (
     <div className="min-h-screen bg-gray-200 p-6">
       <div className="max-w-3xl mx-auto">
-        {/* Filter Buttons */}
-        {!isCompletedView && (
+        {/* View Title */}
+        {viewTitle && (
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">{viewTitle}</h1>
+            <p className="text-sm text-gray-600 mt-1">{sortedDisplayTasks.length} task(s)</p>
+          </div>
+        )}
+
+        {/* Filter Buttons - Only show when not in completed view and no category selected */}
+        {!isCompletedView && !categoryParam && (
           <div className="flex gap-10 mb-6 justify-center">
             <button
               onClick={() => setFilterType('all')}
@@ -342,20 +369,57 @@ function TaskPageInner() {
           </div>
         )}
 
-        {isCompletedView && (
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">Completed Tasks</h1>
-            <p className="text-sm text-gray-600 mt-1">{sortedDisplayTasks.length} task(s) completed</p>
+        {/* Filter Buttons - Show when category is selected but not completed view */}
+        {!isCompletedView && categoryParam && (
+          <div className="flex gap-10 mb-6 justify-center">
+            <button
+              onClick={() => setFilterType('all')}
+              className={`px-6 py-2 rounded-full font-semibold transition-colors hover:cursor-pointer ${
+                filterType === 'all'
+                  ? 'bg-black text-white'
+                  : 'bg-gray-400 text-white hover:bg-gray-500'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setFilterType('deadline')}
+              className={`px-6 py-2 rounded-full font-semibold transition-colors hover:cursor-pointer ${
+                filterType === 'deadline'
+                  ? 'bg-black text-white'
+                  : 'bg-gray-400 text-white hover:bg-gray-500'
+              }`}
+            >
+              Deadline
+            </button>
+            <button
+              onClick={() => setFilterType('priority')}
+              className={`px-6 py-2 rounded-full font-semibold transition-colors hover:cursor-pointer ${
+                filterType === 'priority'
+                  ? 'bg-black text-white'
+                  : 'bg-gray-400 text-white hover:bg-gray-500'
+              }`}
+            >
+              Priority
+            </button>
           </div>
         )}
 
         {sortedDisplayTasks.length === 0 ? (
           <div className="text-center text-gray-500 py-12">
             <p className="text-xl">
-              {isCompletedView ? 'No completed tasks' : 'No tasks found'}
+              {isCompletedView 
+                ? 'No completed tasks' 
+                : categoryParam 
+                ? `No tasks in "${categoryParam}"` 
+                : 'No tasks found'}
             </p>
             <p className="text-sm mt-2">
-              {isCompletedView ? 'Complete some tasks to see them here!' : 'Create your first task to get started!'}
+              {isCompletedView 
+                ? 'Complete some tasks to see them here!' 
+                : categoryParam
+                ? `Create tasks in "${categoryParam}" category to see them here!`
+                : 'Create your first task to get started!'}
             </p>
           </div>
         ) : (
@@ -423,7 +487,8 @@ function TaskPageInner() {
           </div>
         )}
 
-        {!isCompletedView && finishedTasks.length > 0 && (
+        {/* Completed Tasks Section - Only show when not in completed view and not filtering by category */}
+        {!isCompletedView && !categoryParam && filteredFinishedTasks.length > 0 && (
           <div className="mt-6">
             <button
               onClick={() => setShowFinished(!showFinished)}
@@ -431,7 +496,7 @@ function TaskPageInner() {
             >
               <span>Completed</span>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold">{finishedTasks.length}</span>
+                <span className="text-sm font-bold">{filteredFinishedTasks.length}</span>
                 <svg 
                   className={`w-4 h-4 transition-transform ${showFinished ? 'rotate-180' : ''}`} 
                   fill="none" 
@@ -445,7 +510,7 @@ function TaskPageInner() {
 
             {showFinished && (
               <div className="space-y-4 mt-4">
-                {finishedTasks.map((task) => (
+                {filteredFinishedTasks.map((task) => (
                   <div
                     key={task.id}
                     className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md opacity-75`}
