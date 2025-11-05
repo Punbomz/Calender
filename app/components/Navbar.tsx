@@ -149,7 +149,7 @@ export default function Navbar() {
             <button 
               onClick={() => router.push('/task')}
               className={`w-full flex hover:cursor-pointer items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                !view
+                pathname === '/task' && !view
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-300 hover:bg-zinc-800'
               }`}
@@ -162,7 +162,7 @@ export default function Navbar() {
             <button 
               onClick={() => router.push('/task?view=completed')}
               className={`hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                view === 'completed'
+                pathname === '/task' && view === 'completed'
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-300 hover:bg-zinc-800'
               }`}
@@ -262,7 +262,7 @@ export default function Navbar() {
                   <button 
                     onClick={() => router.push('/task')}
                     className={`w-full flex hover:cursor-pointer items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                      !view
+                      pathname === '/task' && !view
                         ? 'bg-blue-600 text-white'
                         : 'text-gray-300 hover:bg-zinc-800'
                     }`}
@@ -275,7 +275,7 @@ export default function Navbar() {
                   <button 
                     onClick={() => router.push('/task?view=completed')}
                     className={`hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                      view === 'completed'
+                      pathname === '/task' && view === 'completed'
                         ? 'bg-blue-600 text-white'
                         : 'text-gray-300 hover:bg-zinc-800'
                     }`}
