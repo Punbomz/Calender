@@ -6,6 +6,7 @@ import { useTaskUpdate } from '../contexts/TaskContext';
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Menu, Calendar, FileText, User, Plus, Trash2, ChevronDown, ChevronRight, Tag, CheckSquare, Inbox, ListTodo } from 'lucide-react';
 import CreateCategoryModal from './CreateCategoryModal';
+import { p } from 'framer-motion/client';
 
 interface Category {
   id: number;
@@ -180,91 +181,93 @@ export default function Navbar() {
       </aside>
 
       {/* Secondary Sidebar (Wide) - Dark Theme */}
-      <aside className="hidden lg:flex lg:fixed lg:left-16 lg:top-0 lg:h-screen lg:w-64 bg-zinc-900 border-r border-zinc-800 flex-col z-40">
-        {/* Header */}
-        <div className="p-4 border-b border-zinc-800">
-          <h2 className="text-lg font-semibold text-white">
-            Calender
-          </h2>
-        </div>
-
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-4">
-           <div className="space-y-1 mb-6">
-            <button 
-              onClick={() => router.push('/task')}
-              className={`w-full flex hover:cursor-pointer items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                pathname === '/task' && !view && !categoryParam
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:bg-zinc-800'
-              }`}
-            >
-              <Inbox size={18} />
-              <span>All</span>
-              <span className="ml-auto text-sm text-gray-400">{allTasksCount}</span>
-            </button>
-
-            <button 
-              onClick={() => router.push('/task?view=completed')}
-              className={`hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                pathname === '/task' && view === 'completed'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:bg-zinc-800'
-              }`}
-            >
-              <CheckSquare size={18} />
-              <span>Completed</span>
-              <span className="ml-auto text-sm text-gray-400">{completedTasksCount}</span>
-            </button>
+      { pathname.startsWith('/task') && (
+        <aside className="hidden lg:flex lg:fixed lg:left-16 lg:top-0 lg:h-screen lg:w-64 bg-zinc-900 border-r border-zinc-800 flex-col z-40">
+          {/* Header */}
+          <div className="p-4 border-b border-zinc-800">
+            <h2 className="text-lg font-semibold text-white">
+              Calender
+            </h2>
           </div>
 
-          {/* Category Section */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between px-3 mb-2 group">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase">Categories</h3>
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="space-y-1 mb-6">
               <button 
-                onClick={() => setIsModalOpen(true)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-zinc-800 rounded"
+                onClick={() => router.push('/task')}
+                className={`w-full flex hover:cursor-pointer items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                  pathname === '/task' && !view && !categoryParam
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-300 hover:bg-zinc-800'
+                }`}
               >
-                <Plus size={14} className="text-gray-400 hover:cursor-pointer" />
+                <Inbox size={18} />
+                <span>All</span>
+                <span className="ml-auto text-sm text-gray-400">{allTasksCount}</span>
+              </button>
+
+              <button 
+                onClick={() => router.push('/task?view=completed')}
+                className={`hover:cursor-pointer w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                  pathname === '/task' && view === 'completed'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-300 hover:bg-zinc-800'
+                }`}
+              >
+                <CheckSquare size={18} />
+                <span>Completed</span>
+                <span className="ml-auto text-sm text-gray-400">{completedTasksCount}</span>
               </button>
             </div>
-            <div className="space-y-1 mb-4">
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => handleCategoryClick(category.name)}
-                  className={`w-full hover:cursor-pointer flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group ${
-                    categoryParam === category.name
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:bg-zinc-800'
-                  }`}
-                >
-                  <ListTodo size={18} />
-                  <span>{category.name}</span>
-                  <div className="ml-auto flex items-center gap-2">
-                    <span className="text-sm text-gray-400 group-hover:hidden">{category.count}</span>
-                    <Trash2 size={16} className="text-gray-500 hidden group-hover:block hover:cursor-pointer hover:text-red-400" />
-                  </div>
-                </button>
-              ))}
-            </div>
-            {/* Category Action Buttons */}
-              <div className="flex items-center gap-2 px-3">
+
+            {/* Category Section */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between px-3 mb-2 group">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase">Categories</h3>
                 <button 
                   onClick={() => setIsModalOpen(true)}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors hover:cursor-pointer"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-zinc-800 rounded"
                 >
-                  <Plus size={18} />
-                  <span className="text-sm font-medium">Add Category</span>
-                </button>
-                <button className="p-2 hover:bg-zinc-800 rounded-lg transition-colors hover:cursor-pointer text-gray-400 hover:text-red-400">
-                  <Trash2 size={18} />
+                  <Plus size={14} className="text-gray-400 hover:cursor-pointer" />
                 </button>
               </div>
+              <div className="space-y-1 mb-4">
+                {categories.map((category) => (
+                  <button
+                    key={category.id}
+                    onClick={() => handleCategoryClick(category.name)}
+                    className={`w-full hover:cursor-pointer flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group ${
+                      categoryParam === category.name
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-300 hover:bg-zinc-800'
+                    }`}
+                  >
+                    <ListTodo size={18} />
+                    <span>{category.name}</span>
+                    <div className="ml-auto flex items-center gap-2">
+                      <span className="text-sm text-gray-400 group-hover:hidden">{category.count}</span>
+                      <Trash2 size={16} className="text-gray-500 hidden group-hover:block hover:cursor-pointer hover:text-red-400" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {/* Category Action Buttons */}
+                <div className="flex items-center gap-2 px-3">
+                  <button 
+                    onClick={() => setIsModalOpen(true)}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors hover:cursor-pointer"
+                  >
+                    <Plus size={18} />
+                    <span className="text-sm font-medium">Add Category</span>
+                  </button>
+                  <button className="p-2 hover:bg-zinc-800 rounded-lg transition-colors hover:cursor-pointer text-gray-400 hover:text-red-400">
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
+      )}
 
       {/* Mobile View */}
       <nav className="lg:hidden fixed top-0 left-0 right-0 bg-zinc-950 text-white p-4 flex items-center z-50 border-b border-zinc-800">

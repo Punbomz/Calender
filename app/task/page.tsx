@@ -570,7 +570,7 @@ function TaskPageInner() {
                 onClick={() => handleEditTask(task)}
                 aria-label={`Edit ${task.taskName}`}
               >
-                <div className="flex items-center gap-3 mb-3">
+                <div className="flex items-center gap-3">
                   <div className="flex-shrink-0 mt-1">
                     <button
                       onClick={(e) => {
@@ -597,7 +597,7 @@ function TaskPageInner() {
                     </button>
                   </div>
                   <div className="flex-1 min-w-0 flex items-center justify-between">
-                    <h3 className={`text-xl font-bold leading-tight ${isCompletedView ? 'line-through' : ''}`}>
+                    <h3 className={`text-xl truncate font-bold leading-tight ${isCompletedView ? 'line-through' : ''}`}>
                       {task.taskName}
                     </h3>
                     <div className="flex items-center gap-2 ml-4 whitespace-nowrap">
@@ -648,7 +648,7 @@ function TaskPageInner() {
                     onClick={() => handleEditTask(task)}
                     aria-label={`Edit ${task.taskName}`}
                   >
-                    <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-3">
                       <div className="flex-shrink-0 mt-1">
                         <button
                           onClick={(e) => {
@@ -675,7 +675,7 @@ function TaskPageInner() {
                         </button>
                       </div>
                       <div className="flex-1 min-w-0 flex items-center justify-between">
-                        <h3 className="text-xl font-bold leading-tight line-through">{task.taskName}</h3>
+                        <h3 className="text-xl font-bold leading-tight line-through truncate">{task.taskName}</h3>
                         <div className="flex items-center gap-2 ml-4 whitespace-nowrap">
                           <Calendar size={18} />
                           <p className="text-sm opacity-90">{formatDate(task.deadLine)}</p>
