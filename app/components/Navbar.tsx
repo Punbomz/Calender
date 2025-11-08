@@ -46,7 +46,7 @@ export default function Navbar() {
   const [allTasksCount, setAllTasksCount] = useState(0);
   const [completedTasksCount, setCompletedTasksCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
-
+  const [showDelete, setShowDelete] = useState(false);
   // Update active section based on current pathname
   useEffect(() => {
     if (pathname.startsWith("/calendar")) {
@@ -304,7 +304,7 @@ export default function Navbar() {
                     <ListTodo size={18} />
                     <span>{category.name}</span>
                     <div className="ml-auto flex items-center gap-2">
-                      <span className="text-sm text-gray-400 group-hover:hidden">
+                      <span className="text-sm text-gray-400">
                         {category.count}
                       </span>
                       {isDeleting === category.name ? (
@@ -313,14 +313,16 @@ export default function Navbar() {
                           className="animate-spin text-blue-400"
                         />
                       ) : (
-                        <Trash2
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteCategory(category.name);
-                          }}
-                          size={16}
-                          className="text-gray-500 hidden group-hover:block hover:cursor-pointer hover:text-red-400"
-                        />
+                        showDelete && ( // ✅ แสดงเฉพาะตอน toggle เปิด
+                          <Trash2
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCategory(category.name);
+                            }}
+                            size={16}
+                            className="text-gray-400 hover:text-red-400 hover:cursor-pointer transition-colors"
+                          />
+                        )
                       )}
                     </div>
                   </button>
@@ -335,7 +337,15 @@ export default function Navbar() {
                   <Plus size={18} />
                   <span className="text-sm font-medium">Add Category</span>
                 </button>
-                <button className="p-2 hover:bg-zinc-800 rounded-lg transition-colors hover:cursor-pointer text-gray-400 hover:text-red-400">
+                <button
+                  onClick={() => setShowDelete(!showDelete)}
+                  className={`p-2 rounded-lg transition-colors hover:cursor-pointer ${
+                    showDelete
+                      ? "bg-red-600 text-white"
+                      : "text-gray-400 hover:bg-zinc-800 hover:text-red-400"
+                  }`}
+                  title="Toggle delete mode"
+                >
                   <Trash2 size={18} />
                 </button>
               </div>
@@ -438,14 +448,16 @@ export default function Navbar() {
                             className="animate-spin text-blue-400"
                           />
                         ) : (
-                          <Trash2
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteCategory(category.name);
-                            }}
-                            size={16}
-                            className="text-gray-500 hidden group-hover:block hover:cursor-pointer hover:text-red-400"
-                          />
+                          showDelete && ( // ✅ แสดงเฉพาะตอน toggle เปิด
+                            <Trash2
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteCategory(category.name);
+                              }}
+                              size={16}
+                              className="text-gray-400 hover:text-red-400 hover:cursor-pointer transition-colors"
+                            />
+                          )
                         )}
                       </div>
                     </button>
@@ -461,8 +473,16 @@ export default function Navbar() {
                     <Plus size={18} />
                     <span className="text-sm font-medium">Add Category</span>
                   </button>
-                  <button className="p-2 hover:bg-zinc-800 rounded-lg transition-colors hover:cursor-pointer text-gray-400 hover:text-red-400">
-                    <Trash2 size={18} />
+                  <button
+                    onClick={() => setShowDelete(!showDelete)}
+                    className={`p-1 rounded transition-colors ${
+                      showDelete
+                        ? "bg-red-600 text-white"
+                        : "hover:bg-zinc-800 text-gray-400 hover:text-red-400"
+                    }`}
+                    title="Toggle delete buttons"
+                  >
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
