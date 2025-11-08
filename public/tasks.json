@@ -1,0 +1,29 @@
+{
+  "settings": {
+    "timezone": "Asia/Bangkok",
+    "weekStart": "Mon",
+    "categories": {
+      "work":   { "color": "#22c55e" },
+      "school": { "color": "#3b82f6" },
+      "personal": { "color": "#f59e0b" }
+    }
+  },
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Robocon standup",
+      "start": "2025-11-08T09:30:00+07:00",
+      "end": "2025-11-08T10:00:00+07:00",
+      "category": "work"
+    },
+    {
+      "id": "t2",
+      "title": "Midterm OS",
+      "start": "2025-11-20",
+      "end": "2025-11-21",
+      "allDay": true,
+      "category": "school"
+    }
+  ]
+}
+
