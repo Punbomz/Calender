@@ -17,6 +17,7 @@ interface Task {
   deadLine: { _seconds: number; _nanoseconds: number };
   isFinished: boolean;
   priorityLevel: number;
+  attachments?: string[];
 }
 
 interface NewTask {
@@ -35,6 +36,7 @@ interface EditTask {
   category: string;
   deadline: string;
   isFinished?: boolean;
+  attachments?: string[];
 }
 
 function TaskPageInner() {
@@ -189,6 +191,7 @@ function TaskPageInner() {
       category: task.category,
       deadline: formattedDeadline,
       isFinished: task.isFinished,
+      attachments: task.attachments,  
     });
     setShowEditModal(true);
   };

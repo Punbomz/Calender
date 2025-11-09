@@ -144,12 +144,12 @@ export default function EditTaskModal({
         throw new Error(data.error || 'Failed to update task');
       }
 
-      console.log('✅ Task updated successfully:', data);
-      const updateTaskFronServer = {
+      const updatedTaskFromServer = {
         ...editedTask,
-        attachments: data.task?.attachments || editedTask.attachments,
-      };
-      onSave(updateTaskFronServer);
+        attachments: data.task?.attachments ?? editedTask.attachments,
+      }
+
+      onSave(updatedTaskFromServer);
     } catch (error: any) {
       console.error('❌ Error updating task:', error);
       alert(`เกิดข้อผิดพลาด: ${error.message}`);
