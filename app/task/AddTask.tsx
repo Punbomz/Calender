@@ -269,8 +269,9 @@ export default function AddTaskModal({
             </label>
             <input
               type="file"
+              name="files"
               multiple
-              accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+              accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
               onChange={handleFileChange}
               className="hover: cursor-pointer w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200"
             />
