@@ -2,6 +2,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { cookies } from "next/headers";
+import { FieldValue } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
+import { s } from "framer-motion/client";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 // PATCH - Update a task
 export async function PATCH(request: NextRequest) {
@@ -19,19 +25,12 @@ export async function PATCH(request: NextRequest) {
     const decodedToken = await adminAuth.verifySessionCookie(session, true);
     const userId = decodedToken.uid;
 
-    const body = await request.json();
-    const { taskId, ...updateData } = body;
-
+    // Parse form data
+    const formData = await request.formData();
+    const taskId = formData.get("taskId") as string | null;
     if (!taskId) {
       return NextResponse.json(
-        { error: "Task ID is required" },
-        { status: 400 }
-      );
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        { error: "No update data provided" },
+        { success: false, error: "Task ID is required" },
         { status: 400 }
       );
     }
@@ -46,18 +45,91 @@ export async function PATCH(request: NextRequest) {
     const taskDoc = await taskRef.get();
     if (!taskDoc.exists) {
       return NextResponse.json(
-        { error: "Task not found" },
+        { success: false, error: "Task not found" },
         { status: 404 }
       );
     }
 
-    // Update the task with timestamp
-    const updatePayload = {
-      ...updateData,
-      updatedAt: new Date().toISOString(),
-    };
+    const existingData = taskDoc.data() || {};
+    const updates: any ={};
 
-    await taskRef.update(updatePayload);
+    const taskName = formData.get("taskName") as string | null;
+    if (taskName !== null) {
+      updates.taskName = taskName.trim();
+    }
+
+    const description = formData.get("description") as string | null;
+    if (description !== null) {
+      updates.description = description.trim();
+    }
+
+    const category = formData.get("category") as string | null;
+    if (category !== null) {
+      updates.category = category.trim();
+    }
+
+    const priorityLevel = formData.get("priorityLevel") as string | null;
+    if (priorityLevel !== null) {
+      const num = Number(priorityLevel);
+      if (!Number.isNaN(num)) {
+        updates.priorityLevel = num;
+      }
+    }
+
+    const deadLine = formData.get("deadLine") as string | null;
+    if (deadLine !== null) {
+      const d = new Date(deadLine);
+      if (Number.isNaN(d.getTime())) {
+        return NextResponse.json(
+          { success: false, error: "Invalid deadline format" },
+          { status: 400 }
+        );
+      }
+      updates.deadLine = d;
+    }
+
+    const files = formData
+      .getAll("files") 
+      .filter((f) => f instanceof File) as File[];
+    if (files.length > 0) {
+      const storage = getStorage();
+      const bucket = storage.bucket();
+      const newAttachmentUrls: string[] = [];
+
+      for (const file of files) {
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const safeName = file.name.replace(/\s+/g, "_");
+        const filePath = `users/${userId}/tasks/${taskId}/${Date.now()}-${safeName}`;
+        const fileRef = bucket.file(filePath);
+        await fileRef.save(buffer, {
+          metadata: { 
+            contentType: file.type || "application/octet-stream",
+          },
+          resumable: false,
+        });
+
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+        newAttachmentUrls.push(publicUrl);
+      }
+
+      const existingAttachments = Array.isArray(existingData.attachments)
+        ? existingData.attachments
+        : [];
+
+      updates.attachments = [...existingAttachments, ...newAttachmentUrls];
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json(
+        { success: false, error: "No update data provided" },
+        { status: 400 }
+      );
+    }
+
+    updates.updatedAt = FieldValue.serverTimestamp();
+
+    await taskRef.update(updates);
 
     // Fetch the updated task
     const updatedTaskDoc = await taskRef.get();
@@ -76,16 +148,14 @@ export async function PATCH(request: NextRequest) {
 
     if (error.code === "auth/session-cookie-expired") {
       return NextResponse.json(
-        { error: "Session expired" },
+        { success: false, error: "Session expired" },
         { status: 401 }
       );
     }
 
     return NextResponse.json(
-      { error: "Failed to update task", details: error.message },
+      { success: false, error: "Failed to update task", details: error.message },
       { status: 500 }
     );
   }
 }
-
-export const dynamic = 'force-dynamic';
