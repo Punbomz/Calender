@@ -122,7 +122,7 @@ function TaskPageInner() {
       }
       
       // แก้ไขเป็น form data เพาะมีไฟล์แนบ
-      const formData = new Formdata();
+      const formData = new FormData();
         formData.append('taskName', newTask.title.trim());
         formData.append('description', newTask.description.trim());
         formData.append('category', newTask.category.trim());
@@ -142,9 +142,6 @@ function TaskPageInner() {
       const response = await fetch('/api/task/addtask', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: formData,
       });
 
