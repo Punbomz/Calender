@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { Save, LogOut } from "lucide-react";
+import { a, u } from "framer-motion/client";
 
 // Type definitions
 interface Task {
@@ -11,6 +12,7 @@ interface Task {
   category: string;
   deadline: string;
   isFinished?: boolean;
+  attachments?: string[];
 }
 
 interface Category {
@@ -34,6 +36,7 @@ export default function EditTaskModal({
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
 
   // Fetch categories from API
   useEffect(() => {
@@ -104,30 +107,49 @@ export default function EditTaskModal({
     setIsSaving(true);
 
     try {
+      if (!editedTask.title.trim()) {
+        alert('กรุณากรอกชื่องาน');
+        setIsSaving(false);
+        return;
+      }
+
+      if (!editedTask.deadline) {
+        alert('กรุณาเลือกกำหนดส่ง');
+        setIsSaving(false);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("taskId", editedTask.id);
+      formData.append("taskName", editedTask.title.trim());
+      formData.append("description", editedTask.description.trim());
+      formData.append("priorityLevel", editedTask.priority);
+      formData.append("category", editedTask.category);
+      formData.append("deadLine", editedTask.deadline);
+
+    // ✅ แนบไฟล์ใหม่ (ถ้ามี)
+      newFiles.forEach((file) => {
+        formData.append("files", file);
+      });
+
       const response = await fetch('/api/task/update', {
         method: 'PATCH',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          taskId: editedTask.id,
-          taskName: editedTask.title,
-          description: editedTask.description,
-          priorityLevel: parseInt(editedTask.priority),
-          category: editedTask.category,
-          deadLine: editedTask.deadline,
-        }),
+        body: formData
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || !data.success) {
         throw new Error(data.error || 'Failed to update task');
       }
 
       console.log('✅ Task updated successfully:', data);
-      onSave(editedTask);
+      const updateTaskFronServer = {
+        ...editedTask,
+        attachments: data.task?.attachments || editedTask.attachments,
+      };
+      onSave(updateTaskFronServer);
     } catch (error: any) {
       console.error('❌ Error updating task:', error);
       alert(`เกิดข้อผิดพลาด: ${error.message}`);
@@ -176,6 +198,26 @@ export default function EditTaskModal({
               className="w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200 resize-none"
             />
           </div>
+
+          {/*Existing Attachments*/}
+          {editedTask.attachments && editedTask.attachments.length > 0 && (
+            <div className="mb-4">
+              <p className="block text-sm font-semibold mb-1">ไฟล์ที่แนบอยู่แล้ว </p>
+              <ul className="list-disc list-inside text-xs text-white/80 space-y-1">
+                {editedTask.attachments.map((url, index) => (
+                  <li key={index}>
+                    <a 
+                      href={url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="underline hover:text-white">
+                        ไฟล์แนบ (Attachment) {index + 1}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             {/* Priority */}
@@ -238,6 +280,32 @@ export default function EditTaskModal({
               required
               className="hover: cursor-pointer w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200"
             />
+          </div>
+
+          {/*New Attachment*/}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold mb-1">\
+              แนบไฟล์/รูปภาพเพิ่มเติม (Attach Files)
+            </label>
+            <input
+              type="file"
+              name="files"
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+              onChange={(e) => {
+                if (!e.target.files) return;
+                const fileArray = Array.from(e.target.files);
+                setNewFiles(fileArray);
+              }}
+              className="hover: cursor-pointer w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200"
+            />
+            {newFiles.length > 0 && (
+              <ul className="mt-2 text-xs text-white/80 space-y-1">
+                {newFiles.map((file, index) => (
+                  <li key={index}>{file.name}</li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Buttons */}
