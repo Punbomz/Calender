@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import "./calendar.css"; // นี่คือไฟล์ CSS ธีมมืดที่คุณเพิ่งส่งมา
-
+import CalendarDay from "@/app/components/CalendarDay";
 type Event = {
   title: string;
   time: string;
@@ -131,4 +131,80 @@ const WeekView: React.FC = () => {
   );
 };
 
-export default WeekView;
+export default function CalendarPage() {
+  const [view, setView] = useState<"week" | "day">("week");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  // ตัวอย่าง categories สำหรับ Day View
+  const categories = {
+    work: { color: "#3b82f6" },
+    personal: { color: "#22c55e" },
+  };
+
+  // mock task list สำหรับ Day View
+  const tasks = [
+    {
+      id: "1",
+      title: "Meeting",
+      start: "2025-11-10T09:00",
+      end: "2025-11-10T10:00",
+      category: "work",
+    },
+    {
+      id: "2",
+      title: "Gym",
+      start: "2025-11-10T18:00",
+      allDay: false,
+      category: "personal",
+    },
+  ];
+
+  return (
+    <div className="calendar-container">
+      {/* ปุ่มเลือกโหมด */}
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 16, gap: 8 }}>
+        <button
+          onClick={() => setView("week")}
+          style={{
+            background: view === "week" ? "#3b82f6" : "#333",
+            color: "white",
+            borderRadius: 8,
+            padding: "8px 16px",
+            border: "none",
+          }}
+        >
+          Week View
+        </button>
+        <button
+          onClick={() => setView("day")}
+          style={{
+            background: view === "day" ? "#3b82f6" : "#333",
+            color: "white",
+            borderRadius: 8,
+            padding: "8px 16px",
+            border: "none",
+          }}
+        >
+          Day View
+        </button>
+      </div>
+
+      {view === "week" ? (
+        <WeekView
+          onSelectDay={(d) => {
+            setSelectedDate(d);
+            setView("day");
+          }}
+        />
+      ) : (
+        <CalendarDay
+          year={selectedDate.getFullYear()}
+          month={selectedDate.getMonth()}
+          day={selectedDate.getDate()}
+          tasks={tasks}
+          categories={categories}
+        />
+      )}
+    </div>
+  );
+}
