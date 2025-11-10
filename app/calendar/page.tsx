@@ -54,7 +54,7 @@ const WeekView: React.FC = () => {
   };
 
   const renderWeek = () => {
-    const week: JSX.Element[] = [];
+    const week = [];
     const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
     for (let i = 0; i < 7; i++) {
