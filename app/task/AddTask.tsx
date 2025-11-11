@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Save, LogOut, Paperclip} from "lucide-react";
+import { Save, LogOut, Paperclip, X } from "lucide-react";
 
 // 1. กำหนด Type ของ Task ให้ชัดเจน
 interface Task {
@@ -38,6 +38,7 @@ export default function AddTaskModal({
   const [error, setError] = useState("");
 
   const[selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const[filePreviews, setFilePreviews] = useState<string[]>([]);
 
   // ดึง categories จาก API เมื่อ component mount
   useEffect(() => {
@@ -108,6 +109,13 @@ export default function AddTaskModal({
     fetchCategories();
   }, []); // เอา newTask ออกจาก dependency array เพื่อป้องกัน infinite loop
 
+  // Cleanup previews when component unmounts
+  useEffect(() => {
+    return () => {
+      filePreviews.forEach(preview => URL.revokeObjectURL(preview));
+    };
+  }, [filePreviews]);
+
   // สร้างฟังก์ชันจัดการการเปลี่ยนแปลงสำหรับ Input ต่างๆ
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -120,8 +128,40 @@ export default function AddTaskModal({
   // ฟังก์ชันจัดการการเปลี่ยนแปลงของไฟล์แนบ
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
-      const filesArray = Array.from(e.target.files);
-      setSelectedFiles(filesArray);
+    
+    const filesArray = Array.from(e.target.files);
+    setSelectedFiles(filesArray);
+    
+    // Create preview URLs for images
+    const newPreviews: string[] = [];
+    filesArray.forEach(file => {
+      if (file.type.startsWith('image/')) {
+        newPreviews.push(URL.createObjectURL(file));
+      } else {
+        newPreviews.push(''); // Empty string for non-images
+      }
+    });
+    
+    // Revoke old preview URLs
+    filePreviews.forEach(preview => {
+      if (preview) URL.revokeObjectURL(preview);
+    });
+    
+    setFilePreviews(newPreviews);
+  };
+
+  // Remove specific file
+  const handleRemoveFile = (index: number) => {
+    const newFiles = selectedFiles.filter((_, i) => i !== index);
+    const newPreviews = filePreviews.filter((_, i) => i !== index);
+    
+    // Revoke the URL of the removed file
+    if (filePreviews[index]) {
+      URL.revokeObjectURL(filePreviews[index]);
+    }
+    
+    setSelectedFiles(newFiles);
+    setFilePreviews(newPreviews);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -264,8 +304,8 @@ export default function AddTaskModal({
 
           {/* File Attachment */}
           <div className="mb-6">
-             <label className="block text-sm font-semibold mb-1">
-              แนบไฟล์ / รูปภาพ (แนบได้หลายไฟล์)
+            <label className="block text-sm font-semibold mb-1">
+              แนบไฟล์ / รูปภาพ
             </label>
             <input
               type="file"
@@ -275,15 +315,59 @@ export default function AddTaskModal({
               onChange={handleFileChange}
               className="hover: cursor-pointer w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200"
             />
+            
+            {/* File Previews */}
             {selectedFiles.length > 0 && (
-              <ul className="mt-2 text-xs text-white/80 space-y-1">
-                {selectedFiles.map((file, index) => (
-                  <li key={index} className="flex item-center gap-2">
-                    <Paperclip size={14} />
-                    {file.name}
-                  </li>
-                ))}
-              </ul>
+              <div className="mt-4">
+                <p className="text-sm font-semibold mb-2">ไฟล์ที่เลือก ({selectedFiles.length})</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {selectedFiles.map((file, index) => {
+                    const isImage = file.type.startsWith('image/');
+                    const isPDF = file.type === 'application/pdf';
+                    
+                    return (
+                      <div
+                        key={index}
+                        className="relative group overflow-hidden rounded-lg border-2 border-white/20 hover:border-[#f0a69a] transition-all duration-200"
+                      >
+                        {isImage && filePreviews[index] ? (
+                          <div className="aspect-square bg-white/10">
+                            <img
+                              src={filePreviews[index]}
+                              alt={file.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="aspect-square bg-white/10 flex flex-col items-center justify-center p-3">
+                            <div className="text-3xl mb-2">
+                              {isPDF ? '📄' : '📎'}
+                            </div>
+                            <p className="text-xs text-center text-white/70 break-all line-clamp-2">
+                              {file.name}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {/* Remove button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(index)}
+                          className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                          title="ลบไฟล์"
+                        >
+                          <X size={16} />
+                        </button>
+                        
+                        {/* File size */}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-xs text-white p-1 text-center">
+                          {(file.size / 1024).toFixed(1)} KB
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
 

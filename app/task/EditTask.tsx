@@ -199,26 +199,6 @@ export default function EditTaskModal({
             />
           </div>
 
-          {/*Existing Attachments*/}
-          {editedTask.attachments && editedTask.attachments.length > 0 && (
-            <div className="mb-4">
-              <p className="block text-sm font-semibold mb-1">ไฟล์ที่แนบอยู่แล้ว </p>
-              <ul className="list-disc list-inside text-xs text-white/80 space-y-1">
-                {editedTask.attachments.map((url, index) => (
-                  <li key={index}>
-                    <a 
-                      href={url} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="underline hover:text-white">
-                        ไฟล์แนบ (Attachment) {index + 1}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
           <div className="grid grid-cols-2 gap-4">
             {/* Priority */}
             <div className="mb-4">
@@ -284,8 +264,8 @@ export default function EditTaskModal({
 
           {/*New Attachment*/}
           <div className="mb-6">
-            <label className="block text-sm font-semibold mb-1">\
-              แนบไฟล์/รูปภาพเพิ่มเติม (Attach Files)
+            <label className="block text-sm font-semibold mb-1">
+              แนบไฟล์ / รูปภาพ
             </label>
             <input
               type="file"
@@ -306,6 +286,55 @@ export default function EditTaskModal({
                 ))}
               </ul>
             )}
+            {editedTask.attachments && editedTask.attachments.length > 0 && (
+            <div className="mb-4">
+              <p className="block text-sm font-semibold mb-2 mt-2">ไฟล์ที่แนบอยู่แล้ว</p>
+              <div className="grid grid-cols-2 gap-3">
+                {editedTask.attachments.map((url, index) => {
+                  const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+                  const isPDF = /\.pdf$/i.test(url);
+                  const fileName = url.split('/').pop()?.split('?')[0] || `Attachment ${index + 1}`;
+                  
+                  return (
+                    <a
+                      key={index}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="relative group overflow-hidden rounded-lg border-2 border-white/20 hover:border-[#f0a69a] transition-all duration-200"
+                    >
+                      {isImage ? (
+                        <div className="aspect-square bg-white/10">
+                          <img
+                            src={url}
+                            alt={`Attachment ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23593831"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23fff"%3EImage%3C/text%3E%3C/svg%3E';
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="aspect-square bg-white/10 flex flex-col items-center justify-center p-3">
+                          <div className="text-3xl mb-2">
+                            {isPDF ? '📄' : '📎'}
+                          </div>
+                          <p className="text-xs text-center text-white/70 break-all line-clamp-2">
+                            {decodeURIComponent(fileName)}
+                          </p>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
+                        <span className="opacity-0 group-hover:opacity-100 text-white text-sm font-semibold">
+                          View
+                        </span>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           </div>
 
           {/* Buttons */}

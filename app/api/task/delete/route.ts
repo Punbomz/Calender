@@ -1,20 +1,16 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebaseClient";
-import { doc, deleteDoc } from "firebase/firestore";
+import { adminDb } from "@/lib/firebaseAdmin";
 
 export async function DELETE(req: Request) {
   try {
-    // อ่านข้อมูลจาก body
     const { userId, taskId } = await req.json();
 
-    // ตรวจสอบค่าที่จำเป็น
     if (!userId || !taskId) {
       return NextResponse.json({ error: "Missing userId or taskId" }, { status: 400 });
     }
 
-    // path: users/{userId}/tasks/{taskId}
-    const docRef = doc(db, "users", userId, "tasks", taskId);
-    await deleteDoc(docRef);
+    const docRef = adminDb.doc(`users/${userId}/tasks/${taskId}`);
+    await docRef.delete();
 
     return NextResponse.json({ ok: true });
   } catch (e) {

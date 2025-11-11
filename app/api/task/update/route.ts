@@ -4,7 +4,6 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { cookies } from "next/headers";
 import { FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { s } from "framer-motion/client";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -93,14 +92,18 @@ export async function PATCH(request: NextRequest) {
       .filter((f) => f instanceof File) as File[];
     if (files.length > 0) {
       const storage = getStorage();
-      const bucket = storage.bucket();
+      // FIX: Specify bucket name explicitly
+      const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+      const bucket = storage.bucket(bucketName);
+      
+      console.log('📦 Using storage bucket:', bucketName);
       const newAttachmentUrls: string[] = [];
 
       for (const file of files) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
         const safeName = file.name.replace(/\s+/g, "_");
-        const filePath = `users/${userId}/tasks/${taskId}/${Date.now()}-${safeName}`;
+        const filePath = `tasks/${userId}/${Date.now()}-${safeName}`;
         const fileRef = bucket.file(filePath);
         await fileRef.save(buffer, {
           metadata: { 
@@ -108,6 +111,9 @@ export async function PATCH(request: NextRequest) {
           },
           resumable: false,
         });
+
+        // Make file publicly accessible (optional)
+        await fileRef.makePublic();
 
         const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
         newAttachmentUrls.push(publicUrl);
