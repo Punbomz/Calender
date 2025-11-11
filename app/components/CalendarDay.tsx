@@ -115,7 +115,7 @@ export default function CalendarDay({
                     onClick={() => setSelectedTask(task)}
                     className="p-2 sm:p-3 rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
                     style={{
-                      backgroundColor: cat?.color + "20",
+                      backgroundColor: cat?.color + "20" || "#FFFFFF20",
                       borderLeft: `4px solid ${cat?.color || "#888"}`,
                     }}
                   >
