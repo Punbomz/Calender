@@ -194,6 +194,7 @@ export default function Navbar() {
       console.error("Error deleting category:", error);
     } finally {
       setIsDeleting(null); // ✅ ลบเสร็จหรือ error → clear loading
+      window.location.href = "/task";
     }
   };
   return (
