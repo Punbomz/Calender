@@ -265,7 +265,7 @@ export default function AddTaskModal({
           {/* File Attachment */}
           <div className="mb-6">
              <label className="block text-sm font-semibold mb-1">
-              แนบไฟล์ / รูปภาพ (แนบได้หลายไฟล์)
+              แนบไฟล์ / รูปภาพ
             </label>
             <input
               type="file"

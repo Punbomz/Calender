@@ -4,7 +4,6 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { cookies } from "next/headers";
 import { FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { s } from "framer-motion/client";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

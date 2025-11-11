@@ -284,8 +284,8 @@ export default function EditTaskModal({
 
           {/*New Attachment*/}
           <div className="mb-6">
-            <label className="block text-sm font-semibold mb-1">\
-              แนบไฟล์/รูปภาพเพิ่มเติม (Attach Files)
+            <label className="block text-sm font-semibold mb-1">
+              แนบไฟล์ / รูปภาพ
             </label>
             <input
               type="file"
