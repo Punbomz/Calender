@@ -43,7 +43,7 @@ export default function EditTaskModal({
     const fetchCategories = async () => {
       try {
         setLoadingCategories(true);
-        console.log("🔄 Fetching categories from /api/task/getcategory ...");
+        console.log("📄 Fetching categories from /api/task/getcategory ...");
 
         const response = await fetch("/api/task/getAllCategory", {
           method: "GET",
@@ -145,6 +145,46 @@ export default function EditTaskModal({
     setFilePreviews(updatedPreviews);
   };
 
+  // Delete single attachment
+  const handleDeleteAttachment = async (fileUrl: string) => {
+    const confirmDelete = window.confirm(
+      `คุณต้องการลบไฟล์นี้ใช่หรือไม่?\n\nการดำเนินการนี้ไม่สามารถย้อนกลับได้`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const response = await fetch('/api/task/deleteAttachments', {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          taskId: editedTask.id,
+          fileUrls: [fileUrl],
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete attachment');
+      }
+
+      // Update local state
+      setEditedTask(prev => ({
+        ...prev,
+        attachments: prev.attachments?.filter(url => url !== fileUrl) || [],
+      }));
+
+      alert('ลบไฟล์สำเร็จ');
+    } catch (error: any) {
+      console.error('❌ Error deleting attachment:', error);
+      alert(`เกิดข้อผิดพลาด: ${error.message}`);
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,7 +248,7 @@ export default function EditTaskModal({
         <h2 className="text-3xl font-extrabold mb-6 text-center">แก้ไขงาน</h2>
 
         {/* Edit Task Form */}
-        <form onSubmit={handleSubmit}>
+        <div onSubmit={handleSubmit}>
           
           {/* Title */}
           <div className="mb-4">
@@ -320,15 +360,12 @@ export default function EditTaskModal({
                   const fileName = url.split('/').pop()?.split('?')[0] || `Attachment ${index + 1}`;
                   
                   return (
-                    <a
+                    <div
                       key={index}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="relative group overflow-hidden rounded-lg border-2 border-white/20 hover:border-[#f0a69a] transition-all duration-200"
                     >
                       {isImage ? (
-                        <div className="aspect-square bg-white/10">
+                        <div className="aspect-square bg-white/10 relative">
                           <img
                             src={url}
                             alt={`Attachment ${index + 1}`}
@@ -339,7 +376,7 @@ export default function EditTaskModal({
                           />
                         </div>
                       ) : (
-                        <div className="aspect-square bg-white/10 flex flex-col items-center justify-center p-3">
+                        <div className="aspect-square bg-white/10 flex flex-col items-center justify-center p-3 relative">
                           <div className="text-3xl mb-2">
                             {isPDF ? '📄' : '📎'}
                           </div>
@@ -348,15 +385,35 @@ export default function EditTaskModal({
                           </p>
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
-                        <span className="opacity-0 group-hover:opacity-100 text-white text-sm font-semibold">
+                      
+                      {/* Delete button - always visible on hover */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAttachment(url)}
+                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg z-10"
+                        title="ลบไฟล์"
+                      >
+                        <X size={16} />
+                      </button>
+                      
+                      {/* View button */}
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100"
+                      >
+                        <span className="text-white text-sm font-semibold bg-[#593831]/80 px-3 py-1 rounded">
                           View
                         </span>
-                      </div>
-                    </a>
+                      </a>
+                    </div>
                   );
                 })}
               </div>
+              <p className="text-xs text-white/60 mt-2">
+                💡 วางเมาส์เหนือไฟล์แล้วคลิกปุ่ม X เพื่อลบ หรือคลิก View เพื่อดูไฟล์
+              </p>
             </div>
           )}
 
@@ -440,14 +497,15 @@ export default function EditTaskModal({
               <LogOut size={20} /> ยกเลิก
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={isSaving}
               className="hover:cursor-pointer flex items-center gap-2 bg-[#f0a69a] text-[#593831] font-bold px-4 py-2 rounded-lg hover:bg-[#ffc2b8] transition-all duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save size={20} /> {isSaving ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
