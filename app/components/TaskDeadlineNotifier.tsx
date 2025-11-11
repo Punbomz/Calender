@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebaseClient";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 export default function TaskDeadlineNotifier() {
@@ -55,5 +55,5 @@ export default function TaskDeadlineNotifier() {
     return () => unsubscribe();
   }, []);
 
-  return null; // component นี้ไม่ต้อง render อะไร
+  return null;
 }
