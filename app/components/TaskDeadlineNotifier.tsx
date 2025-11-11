@@ -65,10 +65,17 @@ export default function TaskDeadlineNotifier() {
     };
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) return;
+      if (!user) {
+        console.log("❌ No user logged in");
+        return;
+      }
 
-      // Check immediately
-      checkTasks(user.uid);
+      console.log("✅ User authenticated:", user.uid);
+
+      // Wait a bit for auth to fully propagate
+      setTimeout(() => {
+        checkTasks(user.uid);
+      }, 1000);
 
       // ✅ Check every 30 minutes
       const interval = setInterval(() => {
