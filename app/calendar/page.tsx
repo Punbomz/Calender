@@ -30,9 +30,7 @@ const priorityColors: Record<number, string> = {
 };
 const defaultColor = "#888"; // สีสำรอง
 
-// --- 1. แก้ไข CalendarMonth Component ทั้งหมด ---
-
-// Calendar Month Component
+// --- CalendarMonth (ยังคงเป็นธีมดำ + มี cursor-pointer) ---
 function CalendarMonth({
   year,
   month,
@@ -48,11 +46,10 @@ function CalendarMonth({
   categories: Categories;
   weekStart?: "Mon" | "Sun";
   onDateClick?: (date: Date) => void;
-  selectedDate?: Date | null; // รับ selectedDate มาเพื่อใช้กรอง
+  selectedDate?: Date | null;
 }) {
   const [cursor, setCursor] = useState(new Date(year, month, 1));
 
-  // Helper function (ยืมมาจาก DayView)
   function ymd(d: Date | null) {
     if (!d) return "";
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
@@ -103,18 +100,15 @@ function CalendarMonth({
 
   const today = new Date();
 
-  // --- ตรรกะใหม่: กรอง Task สำหรับวันที่ถูกเลือก ---
   const selectedDayTasks = tasks.filter((t) => {
     if (t.isFinished || !selectedDate) return false;
     const taskDate = new Date(t.deadLine);
     return ymd(taskDate) === ymd(selectedDate);
   });
-  // --- จบตรรกะใหม่ ---
 
   return (
-    // --- เพิ่ม Wrapper div ---
     <div className="w-full">
-      {/* ปฏิทิน (โค้ดเดิม) */}
+      {/* 1. ปฏิทิน (ยังคงเป็นสีดำ) */}
       <div className="w-full bg-neutral-900 rounded-2xl p-4">
         <div className="flex items-center justify-between mb-4 gap-2">
           <button
@@ -146,7 +140,7 @@ function CalendarMonth({
           {cells.map((date, i) => {
             const isOther = date.getMonth() !== cursor.getMonth();
             const isToday = sameDay(date, today);
-            const isSelected = selectedDate && sameDay(date, selectedDate); // ไฮไลท์ยังทำงานเหมือนเดิม
+            const isSelected = selectedDate && sameDay(date, selectedDate);
             const dayTasks = tasks.filter((t) => !t.isFinished && dateInTask(date, t));
             const sortedDayTasks = dayTasks.sort((a, b) => b.priorityLevel - a.priorityLevel);
             const dots = sortedDayTasks
@@ -154,12 +148,13 @@ function CalendarMonth({
               .map((t) => priorityColors[t.priorityLevel] || defaultColor);
 
             return (
+              // 2. เพิ่ม cursor-pointer
               <div
                 key={i}
-                onClick={() => onDateClick && onDateClick(date)} // onClick ยังเรียก prop เหมือนเดิม
-                className={`rounded-xl p-3 min-h-[80px] cursor-pointer transition-all ${
-                  isOther ? "bg-neutral-800 opacity-40" : "bg-neutral-800 hover:bg-neutral-750"
-                } ${isSelected ? "ring-2 ring-blue-500" : ""}`} // 'isSelected' ยังคงไฮไลท์วัน
+                onClick={() => onDateClick && onDateClick(date)}
+                className={`rounded-xl p-3 min-h-[80px] cursor-pointer transition-all ${ // <-- เพิ่ม cursor-pointer
+                  isOther ? "bg-neutral-800 opacity-40" : "bg-neutral-800 hover:bg-neutral-700"
+                } ${isSelected ? "ring-2 ring-blue-500" : ""}`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <div
@@ -185,9 +180,9 @@ function CalendarMonth({
         </div>
       </div>
 
-      {/* --- ส่วนแสดง Task List ที่เพิ่มเข้ามาใหม่ (ยืมจาก DayView) --- */}
+      {/* 3. Task List (ยังคงเป็นสีดำ) */}
       <div className="bg-neutral-900 rounded-2xl p-6 mt-4">
-        <h5 className="text-lg font-semibold mb-4">
+        <h5 className="text-lg font-semibold mb-4 text-white">
           Tasks for{" "}
           {selectedDate
             ? selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric" })
@@ -200,13 +195,13 @@ function CalendarMonth({
         ) : (
           <div className="space-y-3">
             {selectedDayTasks
-              .sort((a, b) => b.priorityLevel - a.priorityLevel) // เรียง
+              .sort((a, b) => b.priorityLevel - a.priorityLevel)
               .map((task) => (
                 <div
                   key={task.id}
                   className="rounded-xl p-4"
                   style={{
-                    backgroundColor: priorityColors[task.priorityLevel] || defaultColor, // ใช้สี
+                    backgroundColor: priorityColors[task.priorityLevel] || defaultColor,
                   }}
                 >
                   <div className="flex items-start justify-between">
@@ -229,9 +224,8 @@ function CalendarMonth({
     </div>
   );
 }
-// --- จบการแก้ไข CalendarMonth Component ---
 
-// Week View Component (ไม่เปลี่ยนแปลง)
+// --- WeekView (ยังคงเป็นธีมดำ) ---
 function WeekView({
   selectedDate,
   onDateChange,
@@ -249,6 +243,10 @@ function WeekView({
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
   const [selectedDay, setSelectedDay] = useState<string>(ymd(selectedDate));
+
+  useEffect(() => {
+    setSelectedDay(ymd(selectedDate));
+  }, [selectedDate]);
 
   const getMonday = (d: Date) => {
     const day = d.getDay();
@@ -307,7 +305,7 @@ function WeekView({
             <strong className="text-neutral-400 text-xs">{weekdays[i]}</strong>
             <div
               className={`text-lg font-semibold mt-1 ${
-                isToday && !isSelected ? "bg-white text-black rounded-full w-8 h-8 flex items-center justify-center" : ""
+                isToday && !isSelected ? "bg-white text-black rounded-full w-8 h-8 flex items-center justify-center" : "text-white"
               }`}
             >
               {current.getDate()}
@@ -317,13 +315,13 @@ function WeekView({
           {dayTasks.length > 0 && (
             <div className="flex gap-1 justify-center flex-wrap">
               {dayTasks
-                .sort((a, b) => b.priorityLevel - a.priorityLevel) // เรียง
+                .sort((a, b) => b.priorityLevel - a.priorityLevel)
                 .slice(0, 3)
                 .map((task, idx) => (
                   <div
                     key={idx}
                     className="w-2 h-2 rounded-full"
-                    style={{ background: priorityColors[task.priorityLevel] || defaultColor }} // ใช้สี
+                    style={{ background: priorityColors[task.priorityLevel] || defaultColor }}
                   />
                 ))}
               {dayTasks.length > 3 && <span className="text-xs text-neutral-400">+{dayTasks.length - 3}</span>}
@@ -367,19 +365,19 @@ function WeekView({
       </div>
 
       <div className="bg-neutral-900 rounded-2xl p-6">
-        <h5 className="text-lg font-semibold mb-4">Tasks</h5>
+        <h5 className="text-lg font-semibold mb-4 text-white">Tasks</h5>
         {selectedDayTasks.length === 0 ? (
           <div className="text-neutral-400 text-center py-8">No unfinished tasks for this day</div>
         ) : (
           <div className="space-y-3">
             {selectedDayTasks
-              .sort((a, b) => b.priorityLevel - a.priorityLevel) // เรียง
+              .sort((a, b) => b.priorityLevel - a.priorityLevel)
               .map((task) => (
                 <div
                   key={task.id}
                   className="rounded-xl p-4 flex items-center justify-between"
                   style={{
-                    backgroundColor: priorityColors[task.priorityLevel] || defaultColor, // ใช้สี
+                    backgroundColor: priorityColors[task.priorityLevel] || defaultColor,
                   }}
                 >
                   <div>
@@ -398,7 +396,7 @@ function WeekView({
   );
 }
 
-// Day View Component (ไม่เปลี่ยนแปลง)
+// --- DayView (ยังคงเป็นธีมดำ) ---
 function DayView({
   selectedDate,
   tasks,
@@ -459,19 +457,19 @@ function DayView({
       </div>
 
       <div className="bg-neutral-900 rounded-2xl p-6">
-        <h5 className="text-lg font-semibold mb-4">Tasks</h5>
+        <h5 className="text-lg font-semibold mb-4 text-white">Tasks</h5>
         {dayTasks.length === 0 ? (
           <div className="text-neutral-400 text-center py-8">No unfinished tasks for this day</div>
         ) : (
           <div className="space-y-3">
             {dayTasks
-              .sort((a, b) => b.priorityLevel - a.priorityLevel) // เรียง
+              .sort((a, b) => b.priorityLevel - a.priorityLevel)
               .map((task) => (
                 <div
                   key={task.id}
                   className="rounded-xl p-4"
                   style={{
-                    backgroundColor: priorityColors[task.priorityLevel] || defaultColor, // ใช้สี
+                    backgroundColor: priorityColors[task.priorityLevel] || defaultColor,
                   }}
                 >
                   <div className="flex items-start justify-between">
@@ -513,26 +511,16 @@ export default function CalendarApp() {
     },
   });
 
-  // Load tasks from API (ไม่เปลี่ยนแปลง)
   useEffect(() => {
     const loadTasks = async () => {
       try {
         setLoading(true);
         setError(null);
-
         const response = await fetch("/api/task/gettask?isFinished=false");
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch tasks");
-        }
-
+        if (!response.ok) throw new Error("Failed to fetch tasks");
         const data = await response.json();
-
-        if (data.success) {
-          setTasks(data.tasks);
-        } else {
-          throw new Error(data.error || "Failed to load tasks");
-        }
+        if (data.success) setTasks(data.tasks);
+        else throw new Error(data.error || "Failed to load tasks");
       } catch (err: any) {
         console.error("Error loading tasks:", err);
         setError(err.message);
@@ -540,27 +528,17 @@ export default function CalendarApp() {
         setLoading(false);
       }
     };
-
     loadTasks();
   }, []);
 
-  // (ส่วน handleToggleTask, handleDeleteTask, loading, error ไม่เปลี่ยนแปลง)
   const handleToggleTask = async (taskId: string) => {
     try {
       const response = await fetch("/api/task/update", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          taskId,
-          isFinished: true,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId, isFinished: true }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to update task");
-      }
+      if (!response.ok) throw new Error("Failed to update task");
       setTasks(tasks.filter((t) => t.id !== taskId));
     } catch (err: any) {
       console.error("Error toggling task:", err);
@@ -572,16 +550,10 @@ export default function CalendarApp() {
     try {
       const response = await fetch("/api/task/delete", {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ taskId }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete task");
-      }
-
+      if (!response.ok) throw new Error("Failed to delete task");
       setTasks(tasks.filter((t) => t.id !== taskId));
     } catch (err: any) {
       console.error("Error deleting task:", err);
@@ -589,20 +561,22 @@ export default function CalendarApp() {
     }
   };
 
+  // --- 4. แก้ไข Loading (พื้นหลังขาว) ---
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-white text-black flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
           <p>Loading tasks...</p>
         </div>
       </div>
     );
   }
 
+  // --- 5. แก้ไข Error (พื้นหลังขาว) ---
   if (error) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-white text-black flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-500 mb-4">Error: {error}</p>
           <button
@@ -617,32 +591,22 @@ export default function CalendarApp() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
-      <header className="bg-black border-b border-neutral-800 p-4">
-        {/* ... (Header code) ... */}
-        <div className="flex items-center gap-3">
-          <button className="text-white">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
-          <h1 className="text-2xl font-bold">Calendar</h1>
-        </div>
-      </header>
+    // --- 6. แก้ไข Main App (พื้นหลังขาว, text-black) ---
+    <div className="min-h-screen bg-gray-50 text-black flex flex-col"> 
+      {/* (ใช้ bg-gray-50 จะสวยกว่า bg-white ครับ) */}
+      
 
       <main className="flex-1 overflow-y-auto p-4">
         {mainView === "calendar" && (
           <div className="max-w-4xl mx-auto">
-            <div className="flex justify-center mb-6 gap-2 bg-neutral-900 rounded-xl p-2 w-fit mx-auto">
-              {/* ... (Buttons: Month, Week, Day) ... */}
+            {/* --- 8. แก้ไข View Switcher (พื้นหลังสว่าง) --- */}
+            <div className="flex justify-center mb-6 gap-2 bg-white rounded-xl p-2 w-fit mx-auto border shadow-sm">
               <button
                 onClick={() => setCalendarView("month")}
                 className={`px-6 py-2 rounded-lg font-medium transition-all ${
                   calendarView === "month"
                     ? "bg-blue-600 text-white"
-                    : "bg-transparent text-neutral-400 hover:text-white"
+                    : "bg-transparent text-neutral-600 hover:text-black" //
                 }`}
               >
                 Month View
@@ -652,7 +616,7 @@ export default function CalendarApp() {
                 className={`px-6 py-2 rounded-lg font-medium transition-all ${
                   calendarView === "week"
                     ? "bg-blue-600 text-white"
-                    : "bg-transparent text-neutral-400 hover:text-white"
+                    : "bg-transparent text-neutral-600 hover:text-black" //
                 }`}
               >
                 Week View
@@ -662,13 +626,14 @@ export default function CalendarApp() {
                 className={`px-6 py-2 rounded-lg font-medium transition-all ${
                   calendarView === "day"
                     ? "bg-blue-600 text-white"
-                    : "bg-transparent text-neutral-400 hover:text-white"
+                    : "bg-transparent text-neutral-600 hover:text-black" //
                 }`}
               >
                 Day View
               </button>
             </div>
 
+            {/* Components ลูก (Month/Week/Day) จะยังคงเป็นสีดำเหมือนเดิม */}
             {calendarView === "month" && (
               <CalendarMonth
                 year={selectedDate.getFullYear()}
@@ -676,13 +641,10 @@ export default function CalendarApp() {
                 tasks={tasks}
                 categories={settings.categories || {}}
                 weekStart={settings.weekStart}
-                // --- 2. แก้ไข onDateClick ที่นี่ ---
                 onDateClick={(date) => {
-                  setSelectedDate(date); // แค่เลือกวันที่
-                  // setCalendarView("day"); // ไม่ต้องเปลี่ยน View
+                  setSelectedDate(date);
                 }}
-                // --- จบส่วนแก้ไข ---
-                selectedDate={selectedDate} // ส่ง prop นี้ไปเพื่อไฮไลท์และกรอง
+                selectedDate={selectedDate}
               />
             )}
 
@@ -694,8 +656,6 @@ export default function CalendarApp() {
                 categories={settings.categories || {}}
                 onSelectDay={(date) => {
                   setSelectedDate(date);
-                  //setCalendarView("day");
-//
                 }}
               />
             )}
@@ -711,26 +671,25 @@ export default function CalendarApp() {
           </div>
         )}
 
-        {/* ... (mainView "tasks" และ "profile" ไม่เปลี่ยนแปลง) ... */}
+        {/* --- mainView "tasks" (ยังคงเป็นสีดำ) --- */}
         {mainView === "tasks" && (
           <div className="max-w-4xl mx-auto">
-            <div className="bg-neutral-900 rounded-2xl p-6">
+            <div className="bg-neutral-900 rounded-2xl p-6"> 
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Unfinished Tasks</h2>
+                <h2 className="text-2xl font-bold text-white">Unfinished Tasks</h2>
               </div>
-
               <div className="space-y-3">
                 {tasks.length === 0 ? (
                   <div className="text-neutral-400 text-center py-8">No unfinished tasks</div>
                 ) : (
                   tasks
-                    .sort((a, b) => b.priorityLevel - a.priorityLevel) // เรียง
+                    .sort((a, b) => b.priorityLevel - a.priorityLevel)
                     .map((task) => (
                       <div
                         key={task.id}
                         className="rounded-xl p-4"
                         style={{
-                          backgroundColor: priorityColors[task.priorityLevel] || defaultColor, // ใช้สี
+                          backgroundColor: priorityColors[task.priorityLevel] || defaultColor,
                         }}
                       >
                         <div className="flex items-start justify-between">
@@ -767,11 +726,12 @@ export default function CalendarApp() {
             </div>
           </div>
         )}
-
+        
+        {/* --- mainView "profile" (ยังคงเป็นสีดำ) --- */}
         {mainView === "profile" && (
           <div className="max-w-4xl mx-auto">
             <div className="bg-neutral-900 rounded-2xl p-6">
-              <h2 className="text-2xl font-bold mb-6">Profile</h2>
+              <h2 className="text-2xl font-bold mb-6 text-white">Profile</h2>
               <div className="flex flex-col items-center gap-4">
                 <div className="w-24 h-24 bg-neutral-700 rounded-full flex items-center justify-center">
                   <User size={48} className="text-neutral-400" />
