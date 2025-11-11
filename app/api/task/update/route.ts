@@ -65,6 +65,8 @@ export async function PATCH(request: NextRequest) {
     const category = formData.get("category") as string | null;
     if (category !== null) {
       updates.category = category.trim();
+    } else {
+      updates.category = "";
     }
 
     const priorityLevel = formData.get("priorityLevel") as string | null;

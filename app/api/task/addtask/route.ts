@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       (formData.get("deadline") as string | null);
 
     // 4. Validate required fields
-    if (!taskNameRaw || !categoryRaw || !deadlineRaw) {
+    if (!taskNameRaw || !deadlineRaw) {
       return NextResponse.json(
         { success: false, error: "Missing required fields: taskName, category, deadLine" },
         { status: 400 }

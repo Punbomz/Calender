@@ -105,10 +105,10 @@ function TaskPageInner() {
         return;
       }
       
-      if (!newTask.category) {
-        alert('กรุณาเลือกหมวดหมู่');
-        return;
-      }
+      // if (!newTask.category) {
+      //   alert('กรุณาเลือกหมวดหมู่');
+      //   return;
+      // }
       
       if (!newTask.deadline) {
         alert('กรุณาเลือกกำหนดส่ง');

@@ -236,11 +236,14 @@ export default function EditTaskModal({
                 ) : categories.length === 0 ? (
                   <option>No categories</option>
                 ) : (
-                  categories.map((cat) => (
+                  <>
+                    {<option value="">No categories</option>}
+                    {categories.map((cat) => (
                     <option key={cat.id} value={cat.categoryName}>
                       {cat.categoryName}
                     </option>
-                  ))
+                    ))}
+                  </>
                 )}
               </select>
             </div>
