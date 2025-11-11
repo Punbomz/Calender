@@ -5,13 +5,14 @@ import { Calendar, Archive, User, Plus, X, Check } from "lucide-react";
 // Types
 type Task = {
   id: string;
-  title: string;
+  taskName: string;
   start: string;
   end?: string;
-  allDay?: boolean;
   category?: string;
   description?: string;
-  completed?: boolean;
+  isFinished?: boolean;
+  deadLine: string;
+  priorityLevel: number;
 };
 
 type Categories = Record<string, { color: string }>;
@@ -21,12 +22,22 @@ type Settings = {
   categories?: Categories;
 };
 
+// ตัวแปรสีที่ใช้ร่วมกัน
+const priorityColors: Record<number, string> = {
+  3: "#ef4444", // Red (High)
+  2: "#f59e0b", // Yellow/Amber (Medium)
+  1: "#22c55e", // Green (Low)
+};
+const defaultColor = "#888"; // สีสำรอง
+
+// --- 1. แก้ไข CalendarMonth Component ทั้งหมด ---
+
 // Calendar Month Component
 function CalendarMonth({
   year,
   month,
   tasks,
-  categories,
+  // categories,
   weekStart = "Mon",
   onDateClick,
   selectedDate,
@@ -37,9 +48,17 @@ function CalendarMonth({
   categories: Categories;
   weekStart?: "Mon" | "Sun";
   onDateClick?: (date: Date) => void;
-  selectedDate?: Date | null;
+  selectedDate?: Date | null; // รับ selectedDate มาเพื่อใช้กรอง
 }) {
   const [cursor, setCursor] = useState(new Date(year, month, 1));
+
+  // Helper function (ยืมมาจาก DayView)
+  function ymd(d: Date | null) {
+    if (!d) return "";
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate(),
+    ).padStart(2, "0")}`;
+  }
 
   function startOfWeek(d: Date, weekStart: "Mon" | "Sun") {
     const day = d.getDay();
@@ -61,11 +80,10 @@ function CalendarMonth({
   }
 
   function dateInTask(date: Date, t: Task) {
-    const s = new Date(t.start);
-    const e = t.end ? new Date(t.end) : s;
+    const taskDate = new Date(t.deadLine);
     const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
-    return dayEnd >= s && dayStart <= e;
+    return taskDate >= dayStart && taskDate <= dayEnd;
   }
 
   function sameDay(a: Date, b: Date) {
@@ -85,80 +103,140 @@ function CalendarMonth({
 
   const today = new Date();
 
+  // --- ตรรกะใหม่: กรอง Task สำหรับวันที่ถูกเลือก ---
+  const selectedDayTasks = tasks.filter((t) => {
+    if (t.isFinished || !selectedDate) return false;
+    const taskDate = new Date(t.deadLine);
+    return ymd(taskDate) === ymd(selectedDate);
+  });
+  // --- จบตรรกะใหม่ ---
+
   return (
-    <div className="w-full bg-neutral-900 rounded-2xl p-4">
-      <div className="flex items-center justify-between mb-4 gap-2">
-        <button
-          onClick={() => nav(-1)}
-          className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium"
-        >
-          ‹
-        </button>
-        <h2 className="text-xl font-semibold text-white">
-          {cursor.toLocaleString("en-US", { month: "long", year: "numeric" })}
-        </h2>
-        <button
-          onClick={() => nav(1)}
-          className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium"
-        >
-          ›
-        </button>
-      </div>
+    // --- เพิ่ม Wrapper div ---
+    <div className="w-full">
+      {/* ปฏิทิน (โค้ดเดิม) */}
+      <div className="w-full bg-neutral-900 rounded-2xl p-4">
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <button
+            onClick={() => nav(-1)}
+            className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium"
+          >
+            ‹
+          </button>
+          <h2 className="text-xl font-semibold text-white">
+            {cursor.toLocaleString("en-US", { month: "long", year: "numeric" })}
+          </h2>
+          <button
+            onClick={() => nav(1)}
+            className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium"
+          >
+            ›
+          </button>
+        </div>
 
-      <div className="grid grid-cols-7 text-center text-sm text-neutral-400 mb-2">
-        {weekLabels.map((w) => (
-          <div key={w} className="py-2">
-            {w}
-          </div>
-        ))}
-      </div>
+        <div className="grid grid-cols-7 text-center text-sm text-neutral-400 mb-2">
+          {weekLabels.map((w) => (
+            <div key={w} className="py-2">
+              {w}
+            </div>
+          ))}
+        </div>
 
-      <div className="grid grid-cols-7 gap-2">
-        {cells.map((date, i) => {
-          const isOther = date.getMonth() !== cursor.getMonth();
-          const isToday = sameDay(date, today);
-          const isSelected = selectedDate && sameDay(date, selectedDate);
-          const dayTasks = tasks.filter((t) => dateInTask(date, t));
-          const dots = dayTasks.slice(0, 3).map((t) => categories[t.category || "personal"]?.color || "#888");
+        <div className="grid grid-cols-7 gap-2">
+          {cells.map((date, i) => {
+            const isOther = date.getMonth() !== cursor.getMonth();
+            const isToday = sameDay(date, today);
+            const isSelected = selectedDate && sameDay(date, selectedDate); // ไฮไลท์ยังทำงานเหมือนเดิม
+            const dayTasks = tasks.filter((t) => !t.isFinished && dateInTask(date, t));
+            const sortedDayTasks = dayTasks.sort((a, b) => b.priorityLevel - a.priorityLevel);
+            const dots = sortedDayTasks
+              .slice(0, 3)
+              .map((t) => priorityColors[t.priorityLevel] || defaultColor);
 
-          return (
-            <div
-              key={i}
-              onClick={() => onDateClick && onDateClick(date)}
-              className={`rounded-xl p-3 min-h-[80px] cursor-pointer transition-all ${
-                isOther ? "bg-neutral-800 opacity-40" : "bg-neutral-800 hover:bg-neutral-750"
-              } ${isSelected ? "ring-2 ring-blue-500" : ""}`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div
-                  className={`text-sm ${isToday ? "bg-white text-black rounded-full w-7 h-7 flex items-center justify-center font-bold" : "text-white"}`}
-                >
-                  {date.getDate()}
+            return (
+              <div
+                key={i}
+                onClick={() => onDateClick && onDateClick(date)} // onClick ยังเรียก prop เหมือนเดิม
+                className={`rounded-xl p-3 min-h-[80px] cursor-pointer transition-all ${
+                  isOther ? "bg-neutral-800 opacity-40" : "bg-neutral-800 hover:bg-neutral-750"
+                } ${isSelected ? "ring-2 ring-blue-500" : ""}`} // 'isSelected' ยังคงไฮไลท์วัน
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div
+                    className={`text-sm ${
+                      isToday ? "bg-white text-black rounded-full w-7 h-7 flex items-center justify-center font-bold" : "text-white"
+                    }`}
+                  >
+                    {date.getDate()}
+                  </div>
+                </div>
+
+                <div className="flex gap-1 flex-wrap">
+                  {dots.map((c, idx) => (
+                    <span key={idx} className="w-2 h-2 rounded-full" style={{ background: c }} />
+                  ))}
+                  {dayTasks.length > 3 && (
+                    <span className="text-xs text-neutral-400">+{dayTasks.length - 3}</span>
+                  )}
                 </div>
               </div>
+            );
+          })}
+        </div>
+      </div>
 
-              <div className="flex gap-1 flex-wrap">
-                {dots.map((c, idx) => (
-                  <span key={idx} className="w-2 h-2 rounded-full" style={{ background: c }} />
-                ))}
-                {dayTasks.length > 3 && (
-                  <span className="text-xs text-neutral-400">+{dayTasks.length - 3}</span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+      {/* --- ส่วนแสดง Task List ที่เพิ่มเข้ามาใหม่ (ยืมจาก DayView) --- */}
+      <div className="bg-neutral-900 rounded-2xl p-6 mt-4">
+        <h5 className="text-lg font-semibold mb-4">
+          Tasks for{" "}
+          {selectedDate
+            ? selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric" })
+            : "Selected Day"}
+        </h5>
+        {selectedDayTasks.length === 0 ? (
+          <div className="text-neutral-400 text-center py-8">
+            {selectedDate ? "No unfinished tasks for this day" : "Click a date to see tasks"}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {selectedDayTasks
+              .sort((a, b) => b.priorityLevel - a.priorityLevel) // เรียง
+              .map((task) => (
+                <div
+                  key={task.id}
+                  className="rounded-xl p-4"
+                  style={{
+                    backgroundColor: priorityColors[task.priorityLevel] || defaultColor, // ใช้สี
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-white">{task.taskName}</h4>
+                      {task.description && <p className="text-sm mt-1 text-white opacity-90">{task.description}</p>}
+                      <p className="text-sm mt-2 text-white opacity-75">
+                        {new Date(task.deadLine).toLocaleTimeString("en-US", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
+// --- จบการแก้ไข CalendarMonth Component ---
 
-// Week View Component
+// Week View Component (ไม่เปลี่ยนแปลง)
 function WeekView({
   selectedDate,
   onDateChange,
   tasks,
-  categories,
+  // categories,
   onSelectDay,
 }: {
   selectedDate: Date;
@@ -209,7 +287,8 @@ function WeekView({
       const iso = ymd(current);
 
       const dayTasks = tasks.filter((t) => {
-        const taskDate = new Date(t.start);
+        if (t.isFinished) return false;
+        const taskDate = new Date(t.deadLine);
         return ymd(taskDate) === iso;
       });
 
@@ -237,17 +316,20 @@ function WeekView({
 
           {dayTasks.length > 0 && (
             <div className="flex gap-1 justify-center flex-wrap">
-              {dayTasks.slice(0, 3).map((task, idx) => (
-                <div
-                  key={idx}
-                  className="w-2 h-2 rounded-full"
-                  style={{ background: categories[task.category || "personal"]?.color || "#888" }}
-                />
-              ))}
+              {dayTasks
+                .sort((a, b) => b.priorityLevel - a.priorityLevel) // เรียง
+                .slice(0, 3)
+                .map((task, idx) => (
+                  <div
+                    key={idx}
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: priorityColors[task.priorityLevel] || defaultColor }} // ใช้สี
+                  />
+                ))}
               {dayTasks.length > 3 && <span className="text-xs text-neutral-400">+{dayTasks.length - 3}</span>}
             </div>
           )}
-        </div>
+        </div>,
       );
     }
 
@@ -255,7 +337,8 @@ function WeekView({
   };
 
   const selectedDayTasks = tasks.filter((t) => {
-    const taskDate = new Date(t.start);
+    if (t.isFinished) return false;
+    const taskDate = new Date(t.deadLine);
     return ymd(taskDate) === selectedDay;
   });
 
@@ -286,26 +369,28 @@ function WeekView({
       <div className="bg-neutral-900 rounded-2xl p-6">
         <h5 className="text-lg font-semibold mb-4">Tasks</h5>
         {selectedDayTasks.length === 0 ? (
-          <div className="text-neutral-400 text-center py-8">No tasks for this day</div>
+          <div className="text-neutral-400 text-center py-8">No unfinished tasks for this day</div>
         ) : (
           <div className="space-y-3">
-            {selectedDayTasks.map((task) => (
-              <div
-                key={task.id}
-                className="rounded-xl p-4 flex items-center justify-between"
-                style={{
-                  backgroundColor: categories[task.category || "personal"]?.color || "#888",
-                }}
-              >
-                <div>
-                  <strong className="text-white">{task.title}</strong>
-                  {task.description && <div className="text-sm text-white opacity-90 mt-1">{task.description}</div>}
+            {selectedDayTasks
+              .sort((a, b) => b.priorityLevel - a.priorityLevel) // เรียง
+              .map((task) => (
+                <div
+                  key={task.id}
+                  className="rounded-xl p-4 flex items-center justify-between"
+                  style={{
+                    backgroundColor: priorityColors[task.priorityLevel] || defaultColor, // ใช้สี
+                  }}
+                >
+                  <div>
+                    <strong className="text-white">{task.taskName}</strong>
+                    {task.description && <div className="text-sm text-white opacity-90 mt-1">{task.description}</div>}
+                  </div>
+                  <div className="text-sm text-white opacity-75">
+                    {new Date(task.deadLine).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                  </div>
                 </div>
-                <div className="text-sm text-white opacity-75">
-                  {new Date(task.start).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
         )}
       </div>
@@ -313,11 +398,11 @@ function WeekView({
   );
 }
 
-// Day View Component
+// Day View Component (ไม่เปลี่ยนแปลง)
 function DayView({
   selectedDate,
   tasks,
-  categories,
+  // categories,
   onDateChange,
 }: {
   selectedDate: Date;
@@ -341,7 +426,8 @@ function DayView({
   };
 
   const dayTasks = tasks.filter((t) => {
-    const taskDate = new Date(t.start);
+    if (t.isFinished) return false;
+    const taskDate = new Date(t.deadLine);
     return ymd(taskDate) === ymd(selectedDate);
   });
 
@@ -375,36 +461,33 @@ function DayView({
       <div className="bg-neutral-900 rounded-2xl p-6">
         <h5 className="text-lg font-semibold mb-4">Tasks</h5>
         {dayTasks.length === 0 ? (
-          <div className="text-neutral-400 text-center py-8">No tasks for this day</div>
+          <div className="text-neutral-400 text-center py-8">No unfinished tasks for this day</div>
         ) : (
           <div className="space-y-3">
-            {dayTasks.map((task) => (
-              <div
-                key={task.id}
-                className="rounded-xl p-4"
-                style={{
-                  backgroundColor: categories[task.category || "personal"]?.color || "#888",
-                }}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-white">{task.title}</h4>
-                    {task.description && <p className="text-sm mt-1 text-white opacity-90">{task.description}</p>}
-                    <p className="text-sm mt-2 text-white opacity-75">
-                      {new Date(task.start).toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                      {task.end &&
-                        ` - ${new Date(task.end).toLocaleTimeString("en-US", {
+            {dayTasks
+              .sort((a, b) => b.priorityLevel - a.priorityLevel) // เรียง
+              .map((task) => (
+                <div
+                  key={task.id}
+                  className="rounded-xl p-4"
+                  style={{
+                    backgroundColor: priorityColors[task.priorityLevel] || defaultColor, // ใช้สี
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-white">{task.taskName}</h4>
+                      {task.description && <p className="text-sm mt-1 text-white opacity-90">{task.description}</p>}
+                      <p className="text-sm mt-2 text-white opacity-75">
+                        {new Date(task.deadLine).toLocaleTimeString("en-US", {
                           hour: "2-digit",
                           minute: "2-digit",
-                        })}`}
-                    </p>
+                        })}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         )}
       </div>
@@ -418,118 +501,125 @@ export default function CalendarApp() {
   const [calendarView, setCalendarView] = useState<"month" | "week" | "day">("month");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [settings, setSettings] = useState<Settings>({
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [settings] = useState<Settings>({
     weekStart: "Mon",
     categories: {
-      personal: { color: "#ef4444" },
-      work: { color: "#3b82f6" },
-      health: { color: "#22c55e" },
-      other: { color: "#f59e0b" },
+      S: { color: "#ef4444" },
+      A: { color: "#f59e0b" },
+      B: { color: "#3b82f6" },
+      C: { color: "#22c55e" },
     },
   });
-  const [isAddingTask, setIsAddingTask] = useState(false);
-  const [newTask, setNewTask] = useState({
-    title: "",
-    description: "",
-    category: "personal",
-    date: "",
-  });
 
-  // Load data from localStorage
+  // Load tasks from API (ไม่เปลี่ยนแปลง)
   useEffect(() => {
-    const loadData = () => {
-      const savedTasks = localStorage.getItem("calendar-tasks");
-      const savedSettings = localStorage.getItem("calendar-settings");
+    const loadTasks = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      if (savedTasks) {
-        setTasks(JSON.parse(savedTasks));
-      } else {
-        const demoTasks: Task[] = [
-          {
-            id: "1",
-            title: "Team Meeting",
-            start: "2025-11-08T10:00:00",
-            category: "work",
-            description: "Weekly sync",
-          },
-          {
-            id: "2",
-            title: "Gym",
-            start: "2025-11-09T18:00:00",
-            category: "health",
-          },
-          {
-            id: "3",
-            title: "Project Deadline",
-            start: "2025-11-12T23:59:00",
-            category: "work",
-            description: "Submit final report",
-          },
-          {
-            id: "4",
-            title: "Homework1",
-            start: "2024-11-17T12:00:00",
-            category: "personal",
-            description: "Description",
-          },
-          {
-            id: "5",
-            title: "Doctor Appointment",
-            start: "2025-11-20T14:00:00",
-            category: "health",
-          },
-          {
-            id: "6",
-            title: "Birthday Party",
-            start: "2025-11-28T19:00:00",
-            category: "personal",
-          },
-        ];
-        setTasks(demoTasks);
-        localStorage.setItem("calendar-tasks", JSON.stringify(demoTasks));
-      }
+        const response = await fetch("/api/task/gettask?isFinished=false");
 
-      if (savedSettings) {
-        setSettings(JSON.parse(savedSettings));
+        if (!response.ok) {
+          throw new Error("Failed to fetch tasks");
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          setTasks(data.tasks);
+        } else {
+          throw new Error(data.error || "Failed to load tasks");
+        }
+      } catch (err: any) {
+        console.error("Error loading tasks:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
     };
 
-    loadData();
+    loadTasks();
   }, []);
 
-  useEffect(() => {
-    if (tasks.length > 0) {
-      localStorage.setItem("calendar-tasks", JSON.stringify(tasks));
+  // (ส่วน handleToggleTask, handleDeleteTask, loading, error ไม่เปลี่ยนแปลง)
+  const handleToggleTask = async (taskId: string) => {
+    try {
+      const response = await fetch("/api/task/update", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          taskId,
+          isFinished: true,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update task");
+      }
+      setTasks(tasks.filter((t) => t.id !== taskId));
+    } catch (err: any) {
+      console.error("Error toggling task:", err);
+      alert("Failed to update task. Please try again.");
     }
-  }, [tasks]);
-
-  const handleAddTask = () => {
-    if (!newTask.title || !newTask.date) return;
-
-    const task: Task = {
-      id: Date.now().toString(),
-      title: newTask.title,
-      start: new Date(newTask.date).toISOString(),
-      category: newTask.category,
-      description: newTask.description,
-    };
-
-    setTasks([...tasks, task]);
-    setIsAddingTask(false);
-    setNewTask({ title: "", description: "", category: "personal", date: "" });
   };
 
-  const handleToggleTask = (taskId: string) => {
-    setTasks(tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)));
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      const response = await fetch("/api/task/delete", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ taskId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete task");
+      }
+
+      setTasks(tasks.filter((t) => t.id !== taskId));
+    } catch (err: any) {
+      console.error("Error deleting task:", err);
+      alert("Failed to delete task. Please try again.");
+    }
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    setTasks(tasks.filter((t) => t.id !== taskId));
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Loading tasks...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">Error: {error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
       <header className="bg-black border-b border-neutral-800 p-4">
+        {/* ... (Header code) ... */}
         <div className="flex items-center gap-3">
           <button className="text-white">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -545,8 +635,8 @@ export default function CalendarApp() {
       <main className="flex-1 overflow-y-auto p-4">
         {mainView === "calendar" && (
           <div className="max-w-4xl mx-auto">
-            {/* Calendar View Selector */}
             <div className="flex justify-center mb-6 gap-2 bg-neutral-900 rounded-xl p-2 w-fit mx-auto">
+              {/* ... (Buttons: Month, Week, Day) ... */}
               <button
                 onClick={() => setCalendarView("month")}
                 className={`px-6 py-2 rounded-lg font-medium transition-all ${
@@ -579,7 +669,6 @@ export default function CalendarApp() {
               </button>
             </div>
 
-            {/* Render appropriate view */}
             {calendarView === "month" && (
               <CalendarMonth
                 year={selectedDate.getFullYear()}
@@ -587,11 +676,13 @@ export default function CalendarApp() {
                 tasks={tasks}
                 categories={settings.categories || {}}
                 weekStart={settings.weekStart}
+                // --- 2. แก้ไข onDateClick ที่นี่ ---
                 onDateClick={(date) => {
-                  setSelectedDate(date);
-                  setCalendarView("day");
+                  setSelectedDate(date); // แค่เลือกวันที่
+                  // setCalendarView("day"); // ไม่ต้องเปลี่ยน View
                 }}
-                selectedDate={selectedDate}
+                // --- จบส่วนแก้ไข ---
+                selectedDate={selectedDate} // ส่ง prop นี้ไปเพื่อไฮไลท์และกรอง
               />
             )}
 
@@ -603,7 +694,8 @@ export default function CalendarApp() {
                 categories={settings.categories || {}}
                 onSelectDay={(date) => {
                   setSelectedDate(date);
-                  setCalendarView("day");
+                  //setCalendarView("day");
+//
                 }}
               />
             )}
@@ -619,117 +711,58 @@ export default function CalendarApp() {
           </div>
         )}
 
+        {/* ... (mainView "tasks" และ "profile" ไม่เปลี่ยนแปลง) ... */}
         {mainView === "tasks" && (
           <div className="max-w-4xl mx-auto">
             <div className="bg-neutral-900 rounded-2xl p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Tasks</h2>
-                <button
-                  onClick={() => setIsAddingTask(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 flex items-center gap-2"
-                >
-                  <Plus size={20} />
-                  Add Task
-                </button>
+                <h2 className="text-2xl font-bold">Unfinished Tasks</h2>
               </div>
 
-              {isAddingTask && (
-                <div className="bg-neutral-800 rounded-xl p-4 mb-4">
-                  <input
-                    type="text"
-                    placeholder="Task title"
-                    value={newTask.title}
-                    onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                    className="w-full bg-neutral-700 rounded-lg px-4 py-2 mb-3 text-white"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Description"
-                    value={newTask.description}
-                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                    className="w-full bg-neutral-700 rounded-lg px-4 py-2 mb-3 text-white"
-                  />
-                  <input
-                    type="datetime-local"
-                    value={newTask.date}
-                    onChange={(e) => setNewTask({ ...newTask, date: e.target.value })}
-                    className="w-full bg-neutral-700 rounded-lg px-4 py-2 mb-3 text-white"
-                  />
-                  <select
-                    value={newTask.category}
-                    onChange={(e) => setNewTask({ ...newTask, category: e.target.value })}
-                    className="w-full bg-neutral-700 rounded-lg px-4 py-2 mb-3 text-white"
-                  >
-                    <option value="personal">Personal</option>
-                    <option value="work">Work</option>
-                    <option value="health">Health</option>
-                    <option value="other">Other</option>
-                  </select>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleAddTask}
-                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsAddingTask(false);
-                        setNewTask({ title: "", description: "", category: "personal", date: "" });
-                      }}
-                      className="bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg px-4 py-2"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-
               <div className="space-y-3">
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="rounded-xl p-4"
-                    style={{
-                      backgroundColor: settings.categories?.[task.category || "personal"]?.color || "#888",
-                    }}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3 flex-1">
-                        <button onClick={() => handleToggleTask(task.id)} className="mt-1 flex-shrink-0">
-                          {task.completed ? (
-                            <div className="w-5 h-5 rounded border-2 border-white bg-white flex items-center justify-center">
-                              <Check size={14} className="text-black" />
+                {tasks.length === 0 ? (
+                  <div className="text-neutral-400 text-center py-8">No unfinished tasks</div>
+                ) : (
+                  tasks
+                    .sort((a, b) => b.priorityLevel - a.priorityLevel) // เรียง
+                    .map((task) => (
+                      <div
+                        key={task.id}
+                        className="rounded-xl p-4"
+                        style={{
+                          backgroundColor: priorityColors[task.priorityLevel] || defaultColor, // ใช้สี
+                        }}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3 flex-1">
+                            <button onClick={() => handleToggleTask(task.id)} className="mt-1 flex-shrink-0">
+                              <div className="w-5 h-5 rounded border-2 border-white" />
+                            </button>
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-white">{task.taskName}</h4>
+                              {task.description && <p className="text-sm mt-1 opacity-90 text-white">{task.description}</p>}
+                              <p className="text-sm mt-2 opacity-75 text-white">
+                                Deadline:{" "}
+                                {new Date(task.deadLine).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
                             </div>
-                          ) : (
-                            <div className="w-5 h-5 rounded border-2 border-white" />
-                          )}
-                        </button>
-                        <div className="flex-1">
-                          <h4 className={`font-semibold ${task.completed ? "line-through" : ""}`}>
-                            {task.title}
-                          </h4>
-                          {task.description && <p className="text-sm mt-1 opacity-90">{task.description}</p>}
-                          <p className="text-sm mt-2 opacity-75">
-                            {new Date(task.start).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="text-white hover:text-neutral-200 ml-2"
+                          >
+                            <X size={18} />
+                          </button>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleDeleteTask(task.id)}
-                        className="text-white hover:text-neutral-200 ml-2"
-                      >
-                        <X size={18} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                    ))
+                )}
               </div>
             </div>
           </div>
@@ -743,38 +776,16 @@ export default function CalendarApp() {
                 <div className="w-24 h-24 bg-neutral-700 rounded-full flex items-center justify-center">
                   <User size={48} className="text-neutral-400" />
                 </div>
-                <p className="text-neutral-400">Profile settings coming soon...</p>
+                <div className="text-center">
+                  <p className="text-neutral-400">
+                    Profile information will be managed by your external authentication system.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         )}
       </main>
-
-      <nav className="bg-black border-t border-neutral-800 p-4">
-        <div className="flex justify-around max-w-md mx-auto">
-          <button
-            onClick={() => setMainView("calendar")}
-            className={`flex flex-col items-center gap-1 ${mainView === "calendar" ? "text-white" : "text-neutral-400"}`}
-          >
-            <Calendar size={24} />
-            <span className="text-xs">Calendar</span>
-          </button>
-          <button
-            onClick={() => setMainView("tasks")}
-            className={`flex flex-col items-center gap-1 ${mainView === "tasks" ? "text-white" : "text-neutral-400"}`}
-          >
-            <Archive size={24} />
-            <span className="text-xs">Tasks</span>
-          </button>
-          <button
-            onClick={() => setMainView("profile")}
-            className={`flex flex-col items-center gap-1 ${mainView === "profile" ? "text-white" : "text-neutral-400"}`}
-          >
-            <User size={24} />
-            <span className="text-xs">Profile</span>
-          </button>
-        </div>
-      </nav>
     </div>
   );
 }

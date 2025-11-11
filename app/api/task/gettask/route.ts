@@ -3,6 +3,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { cookies } from "next/headers";
 
+// Helper function to convert Firestore Timestamp to ISO string
+function convertTimestamp(timestamp: any): string {
+  if (!timestamp) return new Date().toISOString();
+  
+  // If it's already a string, return it
+  if (typeof timestamp === 'string') return timestamp;
+  
+  // If it's a Firestore Timestamp with _seconds
+  if (timestamp._seconds !== undefined) {
+    return new Date(timestamp._seconds * 1000).toISOString();
+  }
+  
+  // If it has toDate method (Firestore Timestamp)
+  if (typeof timestamp.toDate === 'function') {
+    return timestamp.toDate().toISOString();
+  }
+  
+  // Fallback
+  return new Date().toISOString();
+}
+
 // GET - Fetch tasks
 export async function GET(request: NextRequest) {
   try {
@@ -38,10 +59,22 @@ export async function GET(request: NextRequest) {
 
     const tasksSnapshot = await tasksQuery.get();
 
-    const tasks = tasksSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const tasks = tasksSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      
+      return {
+        id: doc.id,
+        taskName: data.taskName || "",
+        description: data.description || "",
+        category: data.category || "S",
+        priorityLevel: data.priorityLevel || 1,
+        isFinished: data.isFinished || false,
+        // Convert Firestore Timestamps to ISO strings
+        deadLine: convertTimestamp(data.deadLine),
+        createdAt: convertTimestamp(data.createdAt),
+        updatedAt: convertTimestamp(data.updatedAt),
+      };
+    });
 
     return NextResponse.json({
       success: true,
