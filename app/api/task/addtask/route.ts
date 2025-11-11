@@ -68,7 +68,11 @@ export async function POST(request: NextRequest) {
 
     if (files && files.length > 0) {
       const storage = getStorage();
-      const bucket = storage.bucket(); 
+      // FIX: Specify bucket name explicitly
+      const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+      const bucket = storage.bucket(bucketName);
+      
+      console.log('📦 Using storage bucket:', bucketName);
 
       for (const file of files) {
         if (!(file instanceof File)) continue;
@@ -77,7 +81,7 @@ export async function POST(request: NextRequest) {
         const buffer = Buffer.from(bytes);
 
         const safeName = file.name.replace(/\s+/g, "_");
-        const filePath = `users/${userId}/tasks/${Date.now()}-${safeName}`;
+        const filePath = `tasks/${userId}/${Date.now()}-${safeName}`;
         const fileRef = bucket.file(filePath);
 
         await fileRef.save(buffer, {
@@ -86,6 +90,9 @@ export async function POST(request: NextRequest) {
           },
           resumable: false,
         });
+
+        // Make file publicly accessible (optional - adjust based on your security needs)
+        await fileRef.makePublic();
 
         const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
@@ -114,8 +121,7 @@ export async function POST(request: NextRequest) {
 
     // 9. ดึงข้อมูล task ที่เพิ่มมาใหม่
     const newTaskDoc = await taskRef.get();
-    const newTask = { id: newTaskDoc.id, ...newTaskDoc.data(), 
-    };
+    const newTask = { id: newTaskDoc.id, ...newTaskDoc.data() };
 
     return NextResponse.json(
       {
@@ -137,7 +143,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { succes: false, error: "Failed to add task", details: error.message },
+      { success: false, error: "Failed to add task", details: error.message },
       { status: 500 }
     );
   }
