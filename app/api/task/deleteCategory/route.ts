@@ -27,18 +27,50 @@ export async function DELETE(req: Request) {
       );
     }
 
-    // ใช้ adminDb (Admin SDK) แทน client db
-    const docRef = adminDb
+    // ✅ Step 1: Get all tasks with this category
+    const tasksRef = adminDb
+      .collection("users")
+      .doc(userId)
+      .collection("tasks");
+
+    const tasksSnapshot = await tasksRef
+      .where("category", "==", categoryName)
+      .get();
+
+    // ✅ Step 2: Update all matching tasks to set category to ""
+    const batch = adminDb.batch();
+    let updatedTasksCount = 0;
+
+    tasksSnapshot.forEach((doc) => {
+      batch.update(doc.ref, { category: "" });
+      updatedTasksCount++;
+    });
+
+    // Commit the batch update
+    if (updatedTasksCount > 0) {
+      await batch.commit();
+      console.log(`✅ Updated ${updatedTasksCount} tasks to have empty category`);
+    }
+
+    // ✅ Step 3: Delete the category
+    const categoryRef = adminDb
       .collection("users")
       .doc(userId)
       .collection("category")
       .doc(categoryName);
 
-    await docRef.delete();
+    await categoryRef.delete();
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ 
+      success: true,
+      message: "Category deleted successfully",
+      updatedTasksCount 
+    });
   } catch (error) {
-    console.error("Delete category failed:", error);
-    return NextResponse.json({ error: "Delete failed" }, { status: 500 });
+    console.error("❌ Delete category failed:", error);
+    return NextResponse.json({ 
+      success: false,
+      error: "Delete failed" 
+    }, { status: 500 });
   }
 }

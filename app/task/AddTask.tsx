@@ -80,7 +80,7 @@ export default function AddTaskModal({
         if (fetchedCategories.length > 0 && !newTask.category) {
           setNewTask(prev => ({
             ...prev,
-            category: fetchedCategories[0].categoryName
+            category: ''
           }));
         }
       } catch (error: any) {
@@ -173,10 +173,10 @@ export default function AddTaskModal({
       return;
     }
     
-    if (!newTask.category) {
-      setError("กรุณาเลือกหมวดหมู่");
-      return;
-    }
+    // if (!newTask.category) {
+    //   setError("กรุณาเลือกหมวดหมู่");
+    //   return;
+    // }
     
     if (!newTask.deadline) {
       setError("กรุณาเลือกกำหนดส่ง");
@@ -265,7 +265,6 @@ export default function AddTaskModal({
                 value={newTask.category}
                 onChange={handleInputChange}
                 disabled={loadingCategories}
-                required
                 className="hover: cursor-pointer w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loadingCategories ? (
@@ -274,7 +273,7 @@ export default function AddTaskModal({
                   <option value="">No categories</option>
                 ) : (
                   <>
-                    {!newTask.category && <option value="">เลือกหมวดหมู่</option>}
+                    {<option value="" selected>No categories</option>}
                     {categories.map((cat) => (
                       <option key={cat.id} value={cat.categoryName}>
                         {cat.categoryName}
