@@ -1,5 +1,9 @@
-// app/lib/firebaseClient.tsx
-// ✅ Clean Firebase client setup for Next.js
+// Import the functions you need from the SDKs you need
+import { initializeApp, getApps } from "firebase/app";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
@@ -34,6 +38,8 @@ provider.setCustomParameters({
   prompt: "select_account",
 });
 
+export { auth, provider };
+export const db = getFirestore(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import TaskDeadlineNotifier from "./components/TaskDeadlineNotifier";
 import { Analytics } from "@vercel/analytics/next"
 import ConditionalNavbar from './components/ConditionalNavbar';
 import MainContent from './components/MainContent';
@@ -42,6 +43,17 @@ export default function RootLayout({
           </MainContent>
         </Providers>
         <Analytics />
+      </body>
+    </html>
+  );
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="th">
+      <body>
+        <TaskDeadlineNotifier /> {/* ✅ แจ้งเตือนตอนเปิดเว็บ */}
+        {children}
       </body>
     </html>
   );
