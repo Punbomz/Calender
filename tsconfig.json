@@ -1,27 +1,53 @@
 {
   "compilerOptions": {
+    /* Base settings */
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
+    "forceConsistentCasingInFileNames": true,
     "noEmit": true,
-    "esModuleInterop": true,
+    /* Module & Resolution */
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "esModuleInterop": true,
     "incremental": true,
+    /* React + JSX support (สำคัญสุด) */
+    "jsx": "preserve",
+    "types": [
+      "react",
+      "react-dom"
+    ],
+    /* Alias สำหรับ import แบบ '@/components/...' */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    },
+    /* Next.js plugin (auto type checking / routing) */
     "plugins": [
       {
         "name": "next"
       }
-    ],
-    "paths": {
-      "@/*": ["./*"]
-    }
+    ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  /* รวมทุกไฟล์ที่ Next.js ใช้ build */
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  /* ตัด node_modules ออก */
+  "exclude": [
+    "node_modules"
+  ]
 }
