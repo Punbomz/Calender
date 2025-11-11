@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Save, LogOut } from "lucide-react";
+import { Save, LogOut, Paperclip} from "lucide-react";
 
 // 1. กำหนด Type ของ Task ให้ชัดเจน
 interface Task {
@@ -22,7 +22,7 @@ interface Category {
 interface AddTaskModalProps {
   newTask: Task;
   setNewTask: React.Dispatch<React.SetStateAction<Task>>;
-  onSave: () => void;
+  onSave: (files: File[]) => void;
   onClose: () => void;
 }
 
@@ -36,6 +36,8 @@ export default function AddTaskModal({
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [error, setError] = useState("");
+
+  const[selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // ดึง categories จาก API เมื่อ component mount
   useEffect(() => {
@@ -115,6 +117,13 @@ export default function AddTaskModal({
     }));
   };
 
+  // ฟังก์ชันจัดการการเปลี่ยนแปลงของไฟล์แนบ
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+      const filesArray = Array.from(e.target.files);
+      setSelectedFiles(filesArray);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -135,7 +144,7 @@ export default function AddTaskModal({
     }
     
     setError("");
-    onSave();
+    onSave(selectedFiles);
   };
 
   return (
@@ -251,6 +260,31 @@ export default function AddTaskModal({
               required
               className="hover: cursor-pointer w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200"
             />
+          </div>
+
+          {/* File Attachment */}
+          <div className="mb-6">
+             <label className="block text-sm font-semibold mb-1">
+              แนบไฟล์ / รูปภาพ (แนบได้หลายไฟล์)
+            </label>
+            <input
+              type="file"
+              name="files"
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+              onChange={handleFileChange}
+              className="hover: cursor-pointer w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200"
+            />
+            {selectedFiles.length > 0 && (
+              <ul className="mt-2 text-xs text-white/80 space-y-1">
+                {selectedFiles.map((file, index) => (
+                  <li key={index} className="flex item-center gap-2">
+                    <Paperclip size={14} />
+                    {file.name}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Buttons */}

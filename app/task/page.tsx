@@ -17,6 +17,7 @@ interface Task {
   deadLine: { _seconds: number; _nanoseconds: number };
   isFinished: boolean;
   priorityLevel: number;
+  attachments?: string[];
 }
 
 interface NewTask {
@@ -35,6 +36,7 @@ interface EditTask {
   category: string;
   deadline: string;
   isFinished?: boolean;
+  attachments?: string[];
 }
 
 function TaskPageInner() {
@@ -95,7 +97,7 @@ function TaskPageInner() {
     fetchTasks();
   }, []);
 
-  const handleSaveTask = async () => {
+  const handleSaveTask = async (files: File[]) => {
     try {
       // Validate before sending
       if (!newTask.title.trim()) {
@@ -121,30 +123,34 @@ function TaskPageInner() {
         return;
       }
       
-      const taskData = {
-        taskName: newTask.title.trim(),
-        description: newTask.description.trim(),
-        category: newTask.category.trim(),
-        priorityLevel: parseInt(newTask.priority),
-        deadLine: deadlineDate.toISOString(),
-        isFinished: false,
-      };
+      // แก้ไขเป็น form data เพาะมีไฟล์แนบ
+      const formData = new FormData();
+        formData.append('taskName', newTask.title.trim());
+        formData.append('description', newTask.description.trim());
+        formData.append('category', newTask.category.trim());
+        formData.append('priorityLevel', newTask.priority); // string ได้ เดี๋ยว API แปลง
+        formData.append('deadLine', deadlineDate.toISOString());
+        files.forEach((file) => {
+          formData.append('files', file);
+        });
 
-      console.log('📤 Sending task data:', taskData);
+      console.log('📤 Sending FormData with task+files:',{
+        title: newTask.title,
+        category: newTask.category,
+        deadline: deadlineDate.toISOString(),
+        filesCount: files.length,
+      });
 
       const response = await fetch('/api/task/addtask', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(taskData),
+        body: formData,
       });
 
       const responseData = await response.json();
       console.log('📥 Response:', responseData);
 
-      if (!response.ok) {
+      if (!response.ok || !responseData.success) {
         throw new Error(responseData.error || responseData.details || 'Failed to add task');
       }
 
@@ -185,6 +191,7 @@ function TaskPageInner() {
       category: task.category,
       deadline: formattedDeadline,
       isFinished: task.isFinished,
+      attachments: task.attachments,  
     });
     setShowEditModal(true);
   };
