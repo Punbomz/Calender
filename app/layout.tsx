@@ -38,22 +38,12 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <ConditionalNavbar />
           </Suspense>
+          <TaskDeadlineNotifier /> {/* ✅ แจ้งเตือนตอนเปิดเว็บ */}
           <MainContent>
             {children}
           </MainContent>
         </Providers>
         <Analytics />
-      </body>
-    </html>
-  );
-}
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="th">
-      <body>
-        <TaskDeadlineNotifier /> {/* ✅ แจ้งเตือนตอนเปิดเว็บ */}
-        {children}
       </body>
     </html>
   );
