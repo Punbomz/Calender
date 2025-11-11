@@ -69,10 +69,11 @@ export async function GET(request: NextRequest) {
         category: data.category || "S",
         priorityLevel: data.priorityLevel || 1,
         isFinished: data.isFinished || false,
-        // Convert Firestore Timestamps to ISO strings
-        deadLine: convertTimestamp(data.deadLine),
-        createdAt: convertTimestamp(data.createdAt),
-        updatedAt: convertTimestamp(data.updatedAt),
+        attachments: data.attachments || [],
+        // Keep as Firestore timestamp object
+        deadLine: data.deadLine || null,
+        createdAt: data.createdAt || null,
+        updatedAt: data.updatedAt ? convertTimestamp(data.updatedAt) : null,
       };
     });
 
