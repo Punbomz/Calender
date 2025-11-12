@@ -651,13 +651,13 @@ export default function CalendarApp() {
         {mainView === "calendar" && (
           <div className="max-w-4xl mx-auto">
             <div className="flex justify-center mb-4 sm:mb-6 gap-1 sm:gap-2 bg-white rounded-xl p-1 sm:p-2 w-fit mx-auto border shadow-sm">
-              <button onClick={() => setCalendarView("month")} className={`px-3 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-all ${calendarView === "month" ? "bg-blue-600 text-white" : "bg-transparent text-neutral-600 hover:text-black"}`}>
+              <button onClick={() => setCalendarView("month")} className={`hover: cursor-pointer px-3 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-all ${calendarView === "month" ? "bg-blue-600 text-white" : "bg-transparent text-neutral-600 hover:text-black"}`}>
                 Month View
               </button>
-              <button onClick={() => setCalendarView("week")} className={`px-3 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-all ${calendarView === "week" ? "bg-blue-600 text-white" : "bg-transparent text-neutral-600 hover:text-black"}`}>
+              <button onClick={() => setCalendarView("week")} className={`hover: cursor-pointer px-3 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-all ${calendarView === "week" ? "bg-blue-600 text-white" : "bg-transparent text-neutral-600 hover:text-black"}`}>
                 Week View
               </button>
-              <button onClick={() => setCalendarView("day")} className={`px-3 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-all ${calendarView === "day" ? "bg-blue-600 text-white" : "bg-transparent text-neutral-600 hover:text-black"}`}>
+              <button onClick={() => setCalendarView("day")} className={`hover: cursor-pointer px-3 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-all ${calendarView === "day" ? "bg-blue-600 text-white" : "bg-transparent text-neutral-600 hover:text-black"}`}>
                 Day View
               </button>
             </div>
