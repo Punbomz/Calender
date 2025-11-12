@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { Save, LogOut, X } from "lucide-react";
+import { auth } from '@/lib/firebaseClient';
 
 // Type definitions
 interface Task {
@@ -37,6 +38,7 @@ export default function EditTaskModal({
   const [isSaving, setIsSaving] = useState(false);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<string[]>([]);
+  const [deletingFile, setDeletingFile] = useState<string | null>(null);
 
   // Fetch categories from API
   useEffect(() => {
@@ -145,7 +147,7 @@ export default function EditTaskModal({
     setFilePreviews(updatedPreviews);
   };
 
-  // Delete single attachment
+  // Delete single attachment from existing files
   const handleDeleteAttachment = async (fileUrl: string) => {
     const confirmDelete = window.confirm(
       `คุณต้องการลบไฟล์นี้ใช่หรือไม่?\n\nการดำเนินการนี้ไม่สามารถย้อนกลับได้`
@@ -153,7 +155,12 @@ export default function EditTaskModal({
 
     if (!confirmDelete) return;
 
+    setDeletingFile(fileUrl);
+
     try {
+      console.log('🗑️ Deleting attachment:', fileUrl);
+      const userId = auth.currentUser?.uid;
+
       const response = await fetch('/api/task/deleteAttachments', {
         method: 'DELETE',
         credentials: 'include',
@@ -161,27 +168,32 @@ export default function EditTaskModal({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          userId: userId,
           taskId: editedTask.id,
           fileUrls: [fileUrl],
         }),
       });
 
       const data = await response.json();
+      console.log('📊 Delete response:', data);
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Failed to delete attachment');
       }
 
-      // Update local state
+      // Update local state - remove the deleted file URL
       setEditedTask(prev => ({
         ...prev,
         attachments: prev.attachments?.filter(url => url !== fileUrl) || [],
       }));
 
+      console.log('✅ Attachment deleted successfully');
       alert('ลบไฟล์สำเร็จ');
     } catch (error: any) {
       console.error('❌ Error deleting attachment:', error);
       alert(`เกิดข้อผิดพลาด: ${error.message}`);
+    } finally {
+      setDeletingFile(null);
     }
   };
 
@@ -216,6 +228,8 @@ export default function EditTaskModal({
         formData.append("files", file);
       });
 
+      console.log('📤 Submitting task update...');
+
       const response = await fetch('/api/task/update', {
         method: 'PATCH',
         credentials: 'include',
@@ -233,6 +247,7 @@ export default function EditTaskModal({
         attachments: data.task?.attachments ?? editedTask.attachments,
       }
 
+      console.log('✅ Task updated successfully');
       onSave(updatedTaskFromServer);
     } catch (error: any) {
       console.error('❌ Error updating task:', error);
@@ -352,17 +367,22 @@ export default function EditTaskModal({
           {/* Existing Attachments */}
           {editedTask.attachments && editedTask.attachments.length > 0 && (
             <div className="mb-4">
-              <p className="block text-sm font-semibold mb-2">ไฟล์ที่แนบอยู่แล้ว</p>
+              <p className="block text-sm font-semibold mb-2">ไฟล์ที่แนบอยู่แล้ว ({editedTask.attachments.length})</p>
               <div className="grid grid-cols-2 gap-3">
                 {editedTask.attachments.map((url, index) => {
                   const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
                   const isPDF = /\.pdf$/i.test(url);
                   const fileName = url.split('/').pop()?.split('?')[0] || `Attachment ${index + 1}`;
+                  const isDeleting = deletingFile === url;
                   
                   return (
                     <div
                       key={index}
-                      className="relative group overflow-hidden rounded-lg border-2 border-white/20 hover:border-[#f0a69a] transition-all duration-200"
+                      className={`relative group overflow-hidden rounded-lg border-2 transition-all duration-200 ${
+                        isDeleting 
+                          ? 'border-red-500 opacity-50' 
+                          : 'border-white/20 hover:border-[#f0a69a]'
+                      }`}
                     >
                       {isImage ? (
                         <div className="aspect-square bg-white/10 relative">
@@ -390,10 +410,15 @@ export default function EditTaskModal({
                       <button
                         type="button"
                         onClick={() => handleDeleteAttachment(url)}
-                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg z-10"
+                        disabled={isDeleting || isSaving}
+                        className="hover: cursor-pointer absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg z-10 disabled:opacity-50 disabled:cursor-not-allowed"
                         title="ลบไฟล์"
                       >
-                        <X size={16} />
+                        {isDeleting ? (
+                          <div className="animate-spin">⏳</div>
+                        ) : (
+                          <X size={16} />
+                        )}
                       </button>
                       
                       {/* View button */}
@@ -402,11 +427,18 @@ export default function EditTaskModal({
                         target="_blank"
                         rel="noopener noreferrer"
                         className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100"
+                        onClick={(e) => isDeleting && e.preventDefault()}
                       >
                         <span className="text-white text-sm font-semibold bg-[#593831]/80 px-3 py-1 rounded">
                           View
                         </span>
                       </a>
+
+                      {isDeleting && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                          <span className="text-white text-xs">กำลังลบ...</span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -428,7 +460,8 @@ export default function EditTaskModal({
               multiple
               accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
               onChange={handleFileChange}
-              className="hover:cursor-pointer w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200"
+              disabled={isSaving}
+              className="hover:cursor-pointer w-full p-3 rounded-lg text-black bg-white border border-gray-300 focus:ring-2 focus:ring-[#f0a69a] focus:border-[#f0a69a] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             
             {/* New File Previews */}
@@ -443,7 +476,7 @@ export default function EditTaskModal({
                     return (
                       <div
                         key={index}
-                        className="relative group overflow-hidden rounded-lg border-2 border-white/20 hover:border-[#f0a69a] transition-all duration-200"
+                        className="relative group overflow-hidden rounded-lg border-2 border-green-400/50 hover:border-green-400 transition-all duration-200"
                       >
                         {isImage && filePreviews[index] ? (
                           <div className="aspect-square bg-white/10">
@@ -468,15 +501,16 @@ export default function EditTaskModal({
                         <button
                           type="button"
                           onClick={() => handleRemoveFile(index)}
-                          className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                          disabled={isSaving}
+                          className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                           title="ลบไฟล์"
                         >
                           <X size={16} />
                         </button>
                         
                         {/* File size */}
-                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-xs text-white p-1 text-center">
-                          {(file.size / 1024).toFixed(1)} KB
+                        <div className="absolute bottom-0 left-0 right-0 bg-green-600/80 text-xs text-white p-1 text-center">
+                          {(file.size / 1024).toFixed(1)} KB (ใหม่)
                         </div>
                       </div>
                     );
@@ -491,7 +525,7 @@ export default function EditTaskModal({
             <button
               type="button"
               onClick={onClose}
-              disabled={isSaving}
+              disabled={isSaving || deletingFile !== null}
               className="hover:cursor-pointer flex items-center gap-2 bg-white/20 text-white font-bold px-4 py-2 rounded-lg hover:bg-white/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <LogOut size={20} /> ยกเลิก
@@ -499,7 +533,7 @@ export default function EditTaskModal({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSaving}
+              disabled={isSaving || deletingFile !== null}
               className="hover:cursor-pointer flex items-center gap-2 bg-[#f0a69a] text-[#593831] font-bold px-4 py-2 rounded-lg hover:bg-[#ffc2b8] transition-all duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save size={20} /> {isSaving ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
