@@ -44,6 +44,9 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category");
     const isFinished = searchParams.get("isFinished");
 
+    console.log('📥 Fetching tasks for user:', userId);
+    console.log('📊 Filters:', { category, isFinished });
+
     let tasksQuery: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = adminDb
       .collection("users")
       .doc(userId)
@@ -62,6 +65,7 @@ export async function GET(request: NextRequest) {
     const tasks = tasksSnapshot.docs.map((doc) => {
       const data = doc.data();
       
+      // ✅ แปลง Timestamp เป็น ISO string ก่อนส่ง
       return {
         id: doc.id,
         taskName: data.taskName || "",
@@ -70,12 +74,18 @@ export async function GET(request: NextRequest) {
         priorityLevel: data.priorityLevel || 1,
         isFinished: data.isFinished || false,
         attachments: data.attachments || [],
-        // Keep as Firestore timestamp object
-        deadLine: data.deadLine || null,
-        createdAt: data.createdAt || null,
+        deadLine: convertTimestamp(data.deadLine),    // ✅ แปลงเป็น ISO string
+        createdAt: convertTimestamp(data.createdAt),  // ✅ แปลงเป็น ISO string
         updatedAt: data.updatedAt ? convertTimestamp(data.updatedAt) : null,
       };
     });
+
+    console.log(`✅ Found ${tasks.length} tasks`);
+    console.log('📅 Sample task deadlines:', tasks.slice(0, 2).map(t => ({
+      name: t.taskName,
+      deadLine: t.deadLine,
+      type: typeof t.deadLine
+    })));
 
     return NextResponse.json({
       success: true,
@@ -83,7 +93,7 @@ export async function GET(request: NextRequest) {
       count: tasks.length,
     });
   } catch (error: any) {
-    console.error("Error fetching tasks:", error);
+    console.error("❌ Error fetching tasks:", error);
     
     if (error.code === "auth/session-cookie-expired") {
       return NextResponse.json(
