@@ -24,7 +24,7 @@ type Task = {
   category?: string;
   description?: string;
   isFinished?: boolean;
-  deadLine: string; // ISO String
+  deadLine: string;
   priorityLevel: number;
 };
 
@@ -95,44 +95,41 @@ function TaskMenuButton({
   };
 
   return (
-    // แก้ไข Z-index
     <div className={`relative inline-block ${showMenu ? 'z-20' : 'z-auto'}`} ref={menuRef}>
       <button
         onClick={(e) => {
           e.stopPropagation();
           setShowMenu((prev) => !prev);
         }}
-        className="hover:cursor-pointer p-2 rounded-md text-white hover:bg-white/20 transition"
+        className="hover:cursor-pointer p-1.5 sm:p-2 rounded-md text-white hover:bg-white/20 transition"
         aria-label={`Options for ${task.taskName}`}
       >
-        <MoreHorizontal size={18} />
+        <MoreHorizontal size={16} className="sm:w-[18px] sm:h-[18px]" />
       </button>
 
       {showMenu && (
         <div
-          className="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden"
+          className="absolute right-0 mt-2 w-32 sm:w-36 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* ปุ่ม Edit (ลบ hover bg) */}
           <button
             onClick={() => {
               setShowMenu(false);
               handleEditTask(task);
             }}
-            className="hover: cursor-pointer w-full flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-blue-50 hover:text-blue-600"
+            className="hover:cursor-pointer w-full flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm transition hover:bg-blue-50 hover:text-blue-600"
           >
-            <Edit size={16} />
+            <Edit size={14} className="sm:w-4 sm:h-4" />
             Edit
           </button>
-          {/* ปุ่ม Delete */}
           <button
             onClick={() => {
               setShowMenu(false);
               confirmDelete();
             }}
-            className="hover: cursor-pointer w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-red-50 hover:text-red-600 transition"
+            className="hover:cursor-pointer w-full flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm hover:bg-red-50 hover:text-red-600 transition"
           >
-            <Trash2 size={16} />
+            <Trash2 size={14} className="sm:w-4 sm:h-4" />
             Delete
           </button>
         </div>
@@ -178,9 +175,26 @@ function CalendarMonth({
 
   return (
     <div className="w-full">
-      <div className="w-full bg-neutral-900 rounded-2xl p-4">
-        <div className="flex items-center justify-between mb-4 gap-2"> <button onClick={() => nav(-1)} className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium"> ‹ </button> <h2 className="text-xl font-semibold text-white"> {cursor.toLocaleString("en-US", { month: "long", year: "numeric" })} </h2> <button onClick={() => nav(1)} className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium"> › </button> </div> <div className="grid grid-cols-7 text-center text-sm text-neutral-400 mb-2"> {weekLabels.map((w) => (<div key={w} className="py-2"> {w} </div>))} </div>
-        <div className="grid grid-cols-7 gap-2">
+      <div className="w-full bg-neutral-900 rounded-xl sm:rounded-2xl p-2 sm:p-4">
+        <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
+          <button onClick={() => nav(-1)} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
+            ‹
+          </button>
+          <h2 className="text-base sm:text-xl font-semibold text-white">
+            {cursor.toLocaleString("en-US", { month: "long", year: "numeric" })}
+          </h2>
+          <button onClick={() => nav(1)} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
+            ›
+          </button>
+        </div>
+        <div className="grid grid-cols-7 text-center text-xs sm:text-sm text-neutral-400 mb-2">
+          {weekLabels.map((w) => (
+            <div key={w} className="py-1 sm:py-2">
+              {w}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {cells.map((date, i) => {
             const isOther = date.getMonth() !== cursor.getMonth();
             const isToday = sameDay(date, today);
@@ -189,44 +203,59 @@ function CalendarMonth({
             const sortedDayTasks = dayTasks.sort((a, b) => b.priorityLevel - a.priorityLevel);
             const dots = sortedDayTasks.slice(0, 3).map((t) => priorityColors[t.priorityLevel] || defaultColor);
             return (
-              <div key={i} onClick={() => onDateClick && onDateClick(date)} className={`rounded-xl p-3 min-h-[80px] cursor-pointer transition-all ${isOther ? "bg-neutral-800 opacity-40" : "bg-neutral-800 hover:bg-neutral-700"} ${isSelected ? "ring-2 ring-blue-500" : ""}`}>
-                <div className="flex items-center justify-between mb-2"> <div className={`text-sm ${isToday ? "bg-white text-black rounded-full w-7 h-7 flex items-center justify-center font-bold" : "text-white"}`}> {date.getDate()} </div> </div>
-                <div className="flex gap-1 flex-wrap"> {dots.map((c, idx) => (<span key={idx} className="w-2 h-2 rounded-full" style={{ background: c }} />))} {dayTasks.length > 3 && (<span className="text-xs text-neutral-400">+{dayTasks.length - 3}</span>)} </div>
+              <div key={i} onClick={() => onDateClick && onDateClick(date)} className={`rounded-lg sm:rounded-xl p-1.5 sm:p-3 min-h-[60px] sm:min-h-[80px] cursor-pointer transition-all ${isOther ? "bg-neutral-800 opacity-40" : "bg-neutral-800 hover:bg-neutral-700"} ${isSelected ? "ring-2 ring-blue-500" : ""}`}>
+                <div className="flex items-center justify-between mb-1 sm:mb-2">
+                  <div className={`text-xs sm:text-sm ${isToday ? "bg-white text-black rounded-full w-5 h-5 sm:w-7 sm:h-7 flex items-center justify-center font-bold" : "text-white"}`}>
+                    {date.getDate()}
+                  </div>
+                </div>
+                <div className="flex gap-0.5 sm:gap-1 flex-wrap">
+                  {dots.map((c, idx) => (
+                    <span key={idx} className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ background: c }} />
+                  ))}
+                  {dayTasks.length > 3 && (
+                    <span className="text-[10px] sm:text-xs text-neutral-400">+{dayTasks.length - 3}</span>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
       </div>
 
-      <div className="bg-neutral-900 rounded-2xl p-6 mt-4">
-        <h5 className="text-3xl font-bold mb-4 text-white">
-          Tasks for{" "} {selectedDate ? selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric" }) : "Selected Day"}
+      <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-3 sm:p-6 mt-3 sm:mt-4">
+        <h5 className="text-xl sm:text-3xl font-bold mb-3 sm:mb-4 text-white">
+          Tasks for{" "}
+          {selectedDate ? selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric" }) : "Selected Day"}
         </h5>
         {selectedDayTasks.length === 0 ? (
-          <div className="text-neutral-400 text-center py-8">
+          <div className="text-neutral-400 text-center py-6 sm:py-8 text-sm sm:text-base">
             {selectedDate ? "No unfinished tasks for this day" : "Click a date to see tasks"}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {selectedDayTasks
               .sort((a, b) => b.priorityLevel - a.priorityLevel)
               .map((task) => (
-                <div key={task.id} className="rounded-2xl p-5 text-white shadow-md" style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}>
-                  <div className="flex items-center gap-3">
+                <div key={task.id} className="rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-md" style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}>
+                  <div className="flex items-center gap-2 sm:gap-3">
                     <div className="flex-shrink-0 mt-1">
-                      <button onClick={(e) => { e.stopPropagation(); onToggleTask(task.id, task.isFinished || false); }} className="w-7 h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
-                        {task.isFinished && (<svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /> </svg>)}
+                      <button onClick={(e) => { e.stopPropagation(); onToggleTask(task.id, task.isFinished || false); }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
+                        {task.isFinished && (
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
                       </button>
                     </div>
-                    <div className="flex-1 min-w-0 flex items-center justify-between">
-                      <h3 className={`text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
+                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <h3 className={`text-base sm:text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
                         {task.taskName}
                       </h3>
-                      {/* --- ⭐️ 1. แก้ไข: ลบ opacity-90 --- */}
-                      <div className="flex items-center gap-2 ml-4 whitespace-nowrap text-sm">
-                        <Calendar size={16} className="hidden sm:inline" />
+                      <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm">
+                        <Calendar size={14} className="hidden sm:inline sm:w-4 sm:h-4" />
                         <p className="hidden sm:inline">{formatTaskDate(task.deadLine)}</p>
-                        <Clock size={16} />
+                        <Clock size={14} className="sm:w-4 sm:h-4" />
                         <span className="font-semibold">{formatTaskTime(task.deadLine)}</span>
                         <TaskMenuButton
                           task={task}
@@ -273,53 +302,83 @@ function WeekView({
   const goToPrevWeek = () => { const prevWeek = new Date(selectedDate); prevWeek.setDate(selectedDate.getDate() - 7); onDateChange(prevWeek); };
   const handleDayClick = (iso: string, date: Date) => { setSelectedDay(iso); onSelectDay(date); };
   const renderWeek = () => {
-    const week = []; const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const week = [];
+    const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     for (let i = 0; i < 7; i++) {
-      const current = new Date(monday); current.setDate(monday.getDate() + i); const iso = ymd(current);
+      const current = new Date(monday);
+      current.setDate(monday.getDate() + i);
+      const iso = ymd(current);
       const dayTasks = tasks.filter((t) => { if (t.isFinished) return false; const taskDate = new Date(t.deadLine); return ymd(taskDate) === iso; });
-      const isSelected = selectedDay === iso; const isToday = ymd(new Date()) === iso;
+      const isSelected = selectedDay === iso;
+      const isToday = ymd(new Date()) === iso;
       week.push(
-        <div key={iso} className={`relative rounded-xl p-4 cursor-pointer transition-all min-h-[100px] ${isSelected ? "bg-blue-600 ring-2 ring-blue-400" : "bg-neutral-800 hover:bg-neutral-700"} ${isToday ? "ring-2 ring-white" : ""}`} onClick={() => handleDayClick(iso, current)}>
-          <div className="flex flex-col items-center mb-3"> <strong className="text-neutral-400 text-xs">{weekdays[i]}</strong> <div className={`text-lg font-semibold mt-1 ${isToday && !isSelected ? "bg-white text-black rounded-full w-8 h-8 flex items-center justify-center" : "text-white"}`}> {current.getDate()} </div> </div>
-          {dayTasks.length > 0 && (<div className="flex gap-1 justify-center flex-wrap"> {dayTasks.sort((a, b) => b.priorityLevel - a.priorityLevel).slice(0, 3).map((task, idx) => (<div key={idx} className="w-2 h-2 rounded-full" style={{ background: priorityColors[task.priorityLevel] || defaultColor }}/>))} {dayTasks.length > 3 && <span className="text-xs text-neutral-400">+{dayTasks.length - 3}</span>} </div>)}
+        <div key={iso} className={`relative rounded-lg sm:rounded-xl p-2 sm:p-4 cursor-pointer transition-all min-h-[80px] sm:min-h-[100px] ${isSelected ? "bg-blue-600 ring-2 ring-blue-400" : "bg-neutral-800 hover:bg-neutral-700"} ${isToday ? "ring-2 ring-white" : ""}`} onClick={() => handleDayClick(iso, current)}>
+          <div className="flex flex-col items-center mb-2 sm:mb-3">
+            <strong className="text-neutral-400 text-[10px] sm:text-xs">{weekdays[i]}</strong>
+            <div className={`text-sm sm:text-lg font-semibold mt-1 ${isToday && !isSelected ? "bg-white text-black rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center" : "text-white"}`}>
+              {current.getDate()}
+            </div>
+          </div>
+          {dayTasks.length > 0 && (
+            <div className="flex gap-0.5 sm:gap-1 justify-center flex-wrap">
+              {dayTasks.sort((a, b) => b.priorityLevel - a.priorityLevel).slice(0, 3).map((task, idx) => (
+                <div key={idx} className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ background: priorityColors[task.priorityLevel] || defaultColor }} />
+              ))}
+              {dayTasks.length > 3 && <span className="text-[10px] sm:text-xs text-neutral-400">+{dayTasks.length - 3}</span>}
+            </div>
+          )}
         </div>,
       );
-    } return week;
+    }
+    return week;
   };
   const selectedDayTasks = tasks.filter((t) => { if (t.isFinished) return false; const taskDate = new Date(t.deadLine); return ymd(taskDate) === selectedDay; });
 
   return (
     <div className="w-full">
-      <div className="bg-neutral-900 rounded-2xl p-4 mb-4">
-        <div className="flex items-center justify-between mb-4"> <button onClick={goToPrevWeek} className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium"> ‹ </button> <h2 className="text-xl font-semibold text-white"> {monday.toLocaleString("default", { month: "long" })} {monday.getFullYear()} </h2> <button onClick={goToNextWeek} className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium"> › </button> </div>
-        <div className="grid grid-cols-7 gap-2">{renderWeek()}</div>
+      <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-2 sm:p-4 mb-3 sm:mb-4">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <button onClick={goToPrevWeek} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
+            ‹
+          </button>
+          <h2 className="text-base sm:text-xl font-semibold text-white">
+            {monday.toLocaleString("default", { month: "long" })} {monday.getFullYear()}
+          </h2>
+          <button onClick={goToNextWeek} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
+            ›
+          </button>
+        </div>
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">{renderWeek()}</div>
       </div>
 
-      <div className="bg-neutral-900 rounded-2xl p-6">
-        <h5 className="text-3xl font-bold mb-4 text-white">Tasks</h5>
+      <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-3 sm:p-6">
+        <h5 className="text-xl sm:text-3xl font-bold mb-3 sm:mb-4 text-white">Tasks</h5>
         {selectedDayTasks.length === 0 ? (
-          <div className="text-neutral-400 text-center py-8">No unfinished tasks for this day</div>
+          <div className="text-neutral-400 text-center py-6 sm:py-8 text-sm sm:text-base">No unfinished tasks for this day</div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {selectedDayTasks
               .sort((a, b) => b.priorityLevel - a.priorityLevel)
               .map((task) => (
-                <div key={task.id} className="rounded-2xl p-5 text-white shadow-md" style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}>
-                  <div className="flex items-center gap-3">
+                <div key={task.id} className="rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-md" style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}>
+                  <div className="flex items-center gap-2 sm:gap-3">
                     <div className="flex-shrink-0 mt-1">
-                      <button onClick={(e) => { e.stopPropagation(); onToggleTask(task.id, task.isFinished || false); }} className="w-7 h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
-                        {task.isFinished && (<svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /> </svg>)}
+                      <button onClick={(e) => { e.stopPropagation(); onToggleTask(task.id, task.isFinished || false); }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
+                        {task.isFinished && (
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
                       </button>
                     </div>
-                    <div className="flex-1 min-w-0 flex items-center justify-between">
-                      <h3 className={`text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
+                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <h3 className={`text-base sm:text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
                         {task.taskName}
                       </h3>
-                      {/* --- ⭐️ 2. แก้ไข: ลบ opacity-90 --- */}
-                      <div className="flex items-center gap-2 ml-4 whitespace-nowrap text-sm">
-                        <Calendar size={16} className="hidden sm:inline" />
+                      <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm">
+                        <Calendar size={14} className="hidden sm:inline sm:w-4 sm:h-4" />
                         <p className="hidden sm:inline">{formatTaskDate(task.deadLine)}</p>
-                        <Clock size={16} />
+                        <Clock size={14} className="sm:w-4 sm:h-4" />
                         <span className="font-semibold">{formatTaskTime(task.deadLine)}</span>
                         <TaskMenuButton
                           task={task}
@@ -362,35 +421,48 @@ function DayView({
 
   return (
     <div className="w-full">
-      <div className="bg-neutral-900 rounded-2xl p-4 mb-4">
-        <div className="flex items-center justify-between mb-4"> <button onClick={goToPrevDay} className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium"> ‹ </button> <h2 className="text-xl font-semibold text-white"> {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", })} </h2> <button onClick={goToNextDay} className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium"> › </button> </div>
+      <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-2 sm:p-4 mb-3 sm:mb-4">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <button onClick={goToPrevDay} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
+            ‹
+          </button>
+          <h2 className="text-sm sm:text-xl font-semibold text-white text-center">
+            {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+          </h2>
+          <button onClick={goToNextDay} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
+            ›
+          </button>
+        </div>
       </div>
 
-      <div className="bg-neutral-900 rounded-2xl p-6">
-        <h5 className="text-3xl font-bold mb-4 text-white">Tasks</h5>
+      <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-3 sm:p-6">
+        <h5 className="text-xl sm:text-3xl font-bold mb-3 sm:mb-4 text-white">Tasks</h5>
         {dayTasks.length === 0 ? (
-          <div className="text-neutral-400 text-center py-8">No unfinished tasks for this day</div>
+          <div className="text-neutral-400 text-center py-6 sm:py-8 text-sm sm:text-base">No unfinished tasks for this day</div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {dayTasks
               .sort((a, b) => b.priorityLevel - a.priorityLevel)
               .map((task) => (
-                <div key={task.id} className="rounded-2xl p-5 text-white shadow-md" style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}>
-                  <div className="flex items-center gap-3">
+                <div key={task.id} className="rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-md" style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}>
+                  <div className="flex items-center gap-2 sm:gap-3">
                     <div className="flex-shrink-0 mt-1">
-                      <button onClick={(e) => { e.stopPropagation(); onToggleTask(task.id, task.isFinished || false); }} className="w-7 h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
-                        {task.isFinished && (<svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /> </svg>)}
+                      <button onClick={(e) => { e.stopPropagation(); onToggleTask(task.id, task.isFinished || false); }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
+                        {task.isFinished && (
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
                       </button>
                     </div>
-                    <div className="flex-1 min-w-0 flex items-center justify-between">
-                      <h3 className={`text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
+                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <h3 className={`text-base sm:text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
                         {task.taskName}
                       </h3>
-                      {/* --- ⭐️ 3. แก้ไข: ลบ opacity-90 --- */}
-                      <div className="flex items-center gap-2 ml-4 whitespace-nowrap text-sm">
-                        <Calendar size={16} className="hidden sm:inline" />
+                      <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm">
+                        <Calendar size={14} className="hidden sm:inline sm:w-4 sm:h-4" />
                         <p className="hidden sm:inline">{formatTaskDate(task.deadLine)}</p>
-                        <Clock size={16} />
+                        <Clock size={14} className="sm:w-4 sm:h-4" />
                         <span className="font-semibold">{formatTaskTime(task.deadLine)}</span>
                         <TaskMenuButton
                           task={task}
@@ -456,7 +528,7 @@ export default function CalendarApp() {
   };
 
   useEffect(() => {
-    setLoading(true); // Set loading true only on initial load
+    setLoading(true);
     loadTasks();
   }, []);
 
@@ -467,8 +539,13 @@ export default function CalendarApp() {
       )
     );
     try {
-      const response = await fetch("/api/task/update", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ taskId, isFinished: !currentStatus, }), });
-      if (!response.ok) { throw new Error("Failed to update task"); }
+      const response = await fetch("/api/task/update", { 
+        method: "PATCH", 
+        headers: { "Content-Type": "application/json" }, 
+        credentials: "include", 
+        body: JSON.stringify({ taskId, isFinished: !currentStatus }) 
+      });
+      if (!response.ok) throw new Error("Failed to update task");
     } catch (err: any) {
       console.error("Error toggling task:", err);
       alert("Failed to update task. Reverting.");
@@ -480,8 +557,13 @@ export default function CalendarApp() {
     const originalTasks = [...tasks];
     setTasks(prev => prev.filter(t => t.id !== taskId));
     try {
-      const response = await fetch("/api/task/delete", { method: "DELETE", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ taskId }), });
-      if (!response.ok) { throw new Error("Failed to delete task"); }
+      const response = await fetch("/api/task/delete", { 
+        method: "DELETE", 
+        headers: { "Content-Type": "application/json" }, 
+        credentials: "include", 
+        body: JSON.stringify({ taskId }) 
+      });
+      if (!response.ok) throw new Error("Failed to delete task");
     } catch (err: any) {
       console.error("Error deleting task:", err);
       alert("Failed to delete task. Reverting.");
@@ -552,14 +634,33 @@ export default function CalendarApp() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-black flex flex-col">
-      <header className="bg-white border-b border-gray-200 p-4">
-        <div className="flex items-center gap-3"> <button className="text-black"> <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"> <line x1="3" y1="6" x2="21" y2="6" /> <line x1="3" y1="12" x2="21" y2="12" /> <line x1="3" y1="18" x2="21" y2="18" /> </svg> </button> <h1 className="text-2xl font-bold text-black">Calendar</h1> </div>
+      <header className="bg-white border-b border-gray-200 p-3 sm:p-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button className="text-black">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="sm:w-6 sm:h-6">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          <h1 className="text-xl sm:text-2xl font-bold text-black">Calendar</h1>
+        </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4">
+      <main className="flex-1 overflow-y-auto p-2 sm:p-4">
         {mainView === "calendar" && (
           <div className="max-w-4xl mx-auto">
-            <div className="flex justify-center mb-6 gap-2 bg-white rounded-xl p-2 w-fit mx-auto border shadow-sm"> <button onClick={() => setCalendarView("month")} className={`px-6 py-2 rounded-lg font-medium transition-all ${calendarView === "month" ? "bg-blue-600 text-white" : "bg-transparent text-neutral-600 hover:text-black"}`}> Month View </button> <button onClick={() => setCalendarView("week")} className={`px-6 py-2 rounded-lg font-medium transition-all ${calendarView === "week" ? "bg-blue-600 text-white" : "bg-transparent text-neutral-600 hover:text-black"}`}> Week View </button> <button onClick={() => setCalendarView("day")} className={`px-6 py-2 rounded-lg font-medium transition-all ${calendarView === "day" ? "bg-blue-600 text-white" : "bg-transparent text-neutral-600 hover:text-black"}`}> Day View </button> </div>
+            <div className="flex justify-center mb-4 sm:mb-6 gap-1 sm:gap-2 bg-white rounded-xl p-1 sm:p-2 w-fit mx-auto border shadow-sm">
+              <button onClick={() => setCalendarView("month")} className={`px-3 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-all ${calendarView === "month" ? "bg-blue-600 text-white" : "bg-transparent text-neutral-600 hover:text-black"}`}>
+                Month View
+              </button>
+              <button onClick={() => setCalendarView("week")} className={`px-3 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-all ${calendarView === "week" ? "bg-blue-600 text-white" : "bg-transparent text-neutral-600 hover:text-black"}`}>
+                Week View
+              </button>
+              <button onClick={() => setCalendarView("day")} className={`px-3 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-all ${calendarView === "day" ? "bg-blue-600 text-white" : "bg-transparent text-neutral-600 hover:text-black"}`}>
+                Day View
+              </button>
+            </div>
 
             {calendarView === "month" && (
               <CalendarMonth
@@ -574,7 +675,7 @@ export default function CalendarApp() {
                 selectedDate={selectedDate}
                 onToggleTask={handleToggleTask}
                 onDeleteTask={handleDeleteTask}
-                onOpenEditModal={handleOpenEditModal} 
+                onOpenEditModal={handleOpenEditModal}
               />
             )}
 
@@ -609,33 +710,36 @@ export default function CalendarApp() {
 
         {mainView === "tasks" && (
           <div className="max-w-4xl mx-auto">
-            <div className="bg-neutral-900 rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-bold text-white">Unfinished Tasks</h2>
+            <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-3 sm:p-6">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-3xl font-bold text-white">Unfinished Tasks</h2>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {tasks.length === 0 ? (
-                  <div className="text-neutral-400 text-center py-8">No unfinished tasks</div>
+                  <div className="text-neutral-400 text-center py-6 sm:py-8 text-sm sm:text-base">No unfinished tasks</div>
                 ) : (
                   tasks
                     .sort((a, b) => b.priorityLevel - a.priorityLevel)
                     .map((task) => (
-                      <div key={task.id} className="rounded-2xl p-5 text-white shadow-md" style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}>
-                        <div className="flex items-center gap-3">
+                      <div key={task.id} className="rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-md" style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}>
+                        <div className="flex items-center gap-2 sm:gap-3">
                           <div className="flex-shrink-0 mt-1">
-                            <button onClick={(e) => { e.stopPropagation(); handleToggleTask(task.id, task.isFinished || false); }} className="w-7 h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
-                              {task.isFinished && (<svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /> </svg>)}
+                            <button onClick={(e) => { e.stopPropagation(); handleToggleTask(task.id, task.isFinished || false); }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
+                              {task.isFinished && (
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
                             </button>
                           </div>
-                          <div className="flex-1 min-w-0 flex items-center justify-between">
-                            <h3 className={`text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
+                          <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <h3 className={`text-base sm:text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
                               {task.taskName}
                             </h3>
-                            {/* --- ⭐️ 4. แก้ไข: ลบ opacity-90 --- */}
-                            <div className="flex items-center gap-2 ml-4 whitespace-nowrap text-sm">
-                              <Calendar size={16} className="hidden sm:inline" />
+                            <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm">
+                              <Calendar size={14} className="hidden sm:inline sm:w-4 sm:h-4" />
                               <p className="hidden sm:inline">{formatTaskDate(task.deadLine)}</p>
-                              <Clock size={16} />
+                              <Clock size={14} className="sm:w-4 sm:h-4" />
                               <span className="font-semibold">{formatTaskTime(task.deadLine)}</span>
                               <TaskMenuButton
                                 task={task}
@@ -655,7 +759,19 @@ export default function CalendarApp() {
 
         {mainView === "profile" && (
           <div className="max-w-4xl mx-auto">
-            <div className="bg-neutral-900 rounded-2xl p-6"> <h2 className="text-2xl font-bold mb-6 text-white">Profile</h2> <div className="flex flex-col items-center gap-4"> <div className="w-24 h-24 bg-neutral-700 rounded-full flex items-center justify-center"> <User size={48} className="text-neutral-400" /> </div> <div className="text-center"> <p className="text-neutral-400"> Profile information will be managed by your external authentication system. </p> </div> </div> </div>
+            <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-3 sm:p-6">
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-white">Profile</h2>
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-neutral-700 rounded-full flex items-center justify-center">
+                  <User size={40} className="sm:w-12 sm:h-12 text-neutral-400" />
+                </div>
+                <div className="text-center">
+                  <p className="text-neutral-400 text-sm sm:text-base">
+                    Profile information will be managed by your external authentication system.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
