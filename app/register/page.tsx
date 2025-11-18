@@ -20,6 +20,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [fullname, setFullname] = useState("");
+  const [role, setRole] = useState<"student" | "teacher">("student"); // Add role state
 
   // Image upload
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -53,8 +54,8 @@ export default function RegisterPage() {
     try {
       setSubmitting(true);
 
-      // Call the register function with the image file
-      await registerUser(fullname, email, password, confirm, file);
+      // Call the register function with the image file and role
+      await registerUser(fullname, email, password, confirm, file, role);
 
       // Success - redirect to profile
       router.push("/profile");
@@ -177,6 +178,37 @@ export default function RegisterPage() {
                 value={fullname}
                 onChange={(e) => setFullname(e.target.value)}
               />
+            </div>
+
+            {/* Role Selection */}
+            <div className="grid grid-cols-[120px_1fr] items-center gap-3">
+              <label className="font-mono text-lg font-bold text-zinc-900">
+                Role
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="role"
+                    value="student"
+                    checked={role === "student"}
+                    onChange={(e) => setRole(e.target.value as "student" | "teacher")}
+                    className="w-4 h-4 text-amber-900 focus:ring-amber-900"
+                  />
+                  <span className="text-zinc-900 font-medium">Student</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="role"
+                    value="teacher"
+                    checked={role === "teacher"}
+                    onChange={(e) => setRole(e.target.value as "student" | "teacher")}
+                    className="w-4 h-4 text-amber-900 focus:ring-amber-900"
+                  />
+                  <span className="text-zinc-900 font-medium">Teacher</span>
+                </label>
+              </div>
             </div>
 
             {/* Upload */}

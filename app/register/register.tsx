@@ -18,7 +18,8 @@ export async function registerUser(
   email: string,
   password: string,
   confirmPassword: string,
-  profileImage?: File | null
+  profileImage?: File | null,
+  role: "student" | "teacher" = "student"
 ) {
   // Validate Password
   passwordValidation(password, confirmPassword);
@@ -95,7 +96,7 @@ export async function registerUser(
       lastLogin: serverTimestamp(),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      role: "user", // Default role
+      role: role, // Default role
     });
     console.log("User data saved to Firestore successfully");
   } catch (error) {
