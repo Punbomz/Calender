@@ -1,24 +1,42 @@
 import { NextResponse } from "next/server";
-import db from "@/lib/db";
+import { adminDb } from "@/lib/firebaseAdmin"; 
 import { sendNotificationToStudents } from "@/lib/notification";
 
 export async function POST(req: Request) {
-  const data = await req.json();
+  try {
+    const data = await req.json();
 
-  const classroom = await db.classroom.create({
-    data: {
+    const classroomRef = await adminDb.collection("classrooms").add({
       name: data.name,
       teacherId: data.teacherId,
-    },
-  });
+      createdAt: new Date(), 
+    });
 
-  //ดึงรายชื่อเด็กนักเรียนทั้งหมด
-  const students = await db.user.findMany({
-    where: { role: "STUDENT" },
-  });
+    const classroom = {
+      id: classroomRef.id,
+      name: data.name,
+    };
 
-  //ส่งแจ้งเตือน
-  await sendNotificationToStudents(students, classroom); 
+    const studentsSnapshot = await adminDb
+      .collection("users")
+      .where("role", "==", "STUDENT")
+      .get();
 
-  return NextResponse.json({ ok: true, classroom });
+    // แก้จุดที่แดง: เติม : any ให้ doc เพื่อบอก TypeScript ว่า "ยอมรับข้อมูลนี้เถอะ"
+    const students = studentsSnapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    await sendNotificationToStudents(students as any, classroom);
+
+    return NextResponse.json({ ok: true, classroom });
+
+  } catch (error) {
+    console.error("Error creating classroom:", error);
+    return NextResponse.json(
+      { ok: false, error: "Failed to create classroom" }, 
+      { status: 500 }
+    );
+  }
 }
