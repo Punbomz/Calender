@@ -91,12 +91,16 @@ export default function ClassroomPage() {
   }, []);
 
   const handleCreate = () => {
-    // TODO: Open create classroom modal
+    return (
+      <CreateClassroomModal isOpen={openCreate} onClose={() => setOpenCreate(false)} />
+    );
     console.log("Create classroom clicked");
   };
 
   const handleJoin = () => {
-    // TODO: Open join classroom modal
+    return (
+      <JoinClassroomModal isOpen={openJoin} onClose={() => setOpenJoin(false)} />
+    );
     console.log("Join classroom clicked");
   };
 
@@ -258,8 +262,8 @@ export default function ClassroomPage() {
           {/* ปุ่มด้านบน: ถ้า teacher → Create, ถ้า student → Join */}
           <button
             onClick={() => {
-              if (role === "teacher") setOpenCreate(true);
-              else setOpenJoin(true);
+              if (role === "teacher") handleCreate();
+              else handleJoin();
             }}
             style={{
               backgroundColor: "#6c3b2a",
@@ -332,9 +336,6 @@ export default function ClassroomPage() {
             {classrooms.length === 0 && (
               <div style={{ padding: 8 }}>ยังไม่มีห้องเรียนในบัญชีนี้</div>
             )}
-
-            <CreateClassroomModal isOpen={openCreate} onClose={() => setOpenCreate(false)} />
-            <JoinClassroomModal isOpen={openJoin} onClose={() => setOpenJoin(false)} />
           </div>
         </div>
       </div>
