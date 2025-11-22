@@ -20,7 +20,7 @@ export default function CreateClassroomModal({ isOpen, onClose }: Props) {
 
     setLoading(true);
 
-    const res = await fetch("/app/classroom/create-classroom", {
+    const res = await fetch("/api/classroom/createClassroom", {
       method: "POST",
       body: JSON.stringify({ name }),
       headers: { "Content-Type": "application/json" },

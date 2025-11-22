@@ -30,9 +30,13 @@ export async function POST(req: Request) {
     const classroomDoc = q.docs[0];
     const classID = classroomDoc.id;
 
+    // ตรวจสอบว่า student อยู่ในห้องเรียนนี้แล้วหรือไม่
     const existingStudents: string[] = classroomDoc.data().students || [];
     if (existingStudents.includes(studentId)) {
-      return NextResponse.json({ error: "คุณอยู่ในห้องเรียนนี้แล้ว" }, { status: 400 });
+      return NextResponse.json({ 
+        error: "คุณอยู่ในห้องเรียนนี้แล้ว",
+        alreadyJoined: true 
+      }, { status: 200 }); // Changed to 200 so it's treated as success
     }
 
     // เพิ่ม student เข้า classroom
@@ -53,11 +57,40 @@ export async function POST(req: Request) {
         teacher: classroomDoc.data().teacher,
       });
 
+    // ดึงทุก tasks จาก classroom/tasks
+    const classroomTasksSnapshot = await adminDb
+      .collection("classrooms")
+      .doc(classID)
+      .collection("tasks")
+      .get();
+
+    // คัดลอก tasks ทั้งหมดไปยัง users/{studentId}/tasks
+    const copyTasksPromises = classroomTasksSnapshot.docs.map(async (taskDoc) => {
+      const taskData = taskDoc.data();
+      const taskID = taskDoc.id;
+
+      // สร้าง task ใน users/{studentId}/tasks/{taskID}
+      await adminDb
+        .collection("users")
+        .doc(studentId)
+        .collection("tasks")
+        .doc(taskID)
+        .set({
+          ...taskData,
+          // เพิ่มข้อมูลว่า task นี้มาจาก classroom
+          classroom: classID,
+        });
+    });
+
+    // รอให้คัดลอก tasks ทั้งหมดเสร็จ
+    await Promise.all(copyTasksPromises);
+
     return NextResponse.json({
       success: true,
       classroomID: classID,
       name: classroomDoc.data().name,
       code: classroomDoc.data().code,
+      tasksCount: classroomTasksSnapshot.size,
     });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });

@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { db, auth, onAuthStateChanged } from "@/lib/firebaseClient";
-import CreateClassroomModal from "@/app/api/classroom/createClassroom/route";
-import JoinClassroomModal from "@/app/api/classroom/joinClassroom/route";
+import CreateClassroomModal from "./createClassroom";
+import JoinClassroomModal from "./joinClassroom";
 import {
   collection,
   doc,
@@ -101,7 +101,120 @@ export default function ClassroomPage() {
   };
 
   if (loading) {
-    return <div style={{ padding: 16 }}>Loading...</div>;
+    return (
+      <div
+        style={{
+          width: "100%",
+          minHeight: "100vh",
+          backgroundColor: "#e5e5e5",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Top bar */}
+        <div
+          style={{
+            backgroundColor: "black",
+            color: "white",
+            padding: "12px 16px",
+            fontFamily: "monospace",
+            fontSize: 20,
+          }}
+        >
+          My Classroom
+        </div>
+
+        {/* Content with skeleton */}
+        <div
+          style={{
+            flex: 1,
+            padding: 16,
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 480,
+            }}
+          >
+            {/* Button skeleton */}
+            <div
+              style={{
+                backgroundColor: "#c0c0c0",
+                borderRadius: 10,
+                padding: "8px 24px",
+                fontSize: 20,
+                height: 40,
+                width: 120,
+                margin: "0 auto 16px",
+                animation: "pulse 1.5s ease-in-out infinite",
+              }}
+            />
+
+            {/* List skeleton */}
+            <div
+              style={{
+                backgroundColor: "#aaaaaa",
+                borderRadius: 10,
+                padding: 12,
+              }}
+            >
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "8px 6px",
+                    marginBottom: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 24,
+                      height: 24,
+                      backgroundColor: "#c0c0c0",
+                      borderRadius: 4,
+                      marginRight: 15,
+                      animation: "pulse 1.5s ease-in-out infinite",
+                    }}
+                  />
+                  <div
+                    style={{
+                      height: 20,
+                      backgroundColor: "#c0c0c0",
+                      borderRadius: 4,
+                      flex: 1,
+                      maxWidth: 200,
+                      animation: "pulse 1.5s ease-in-out infinite",
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Keyframe animation */}
+        <style>{`
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.5;
+            }
+          }
+          
+          .classroom-item:hover {
+            background-color: #6c3b2a !important;
+            color: white !important;
+          }
+        `}</style>
+      </div>
+    );
   }
 
   return (
@@ -179,6 +292,7 @@ export default function ClassroomPage() {
                 onClick={() =>
                   console.log("Open classroom:", room.classroomID)
                 }
+                className="classroom-item"
                 style={{
                   width: "100%",
                   display: "flex",
@@ -188,6 +302,9 @@ export default function ClassroomPage() {
                   background: "transparent",
                   textAlign: "left",
                   cursor: "pointer",
+                  borderRadius: 8,
+                  transition: "all 0.2s ease",
+                  color: "black",
                 }}
               >
                 <span
@@ -216,8 +333,8 @@ export default function ClassroomPage() {
               <div style={{ padding: 8 }}>ยังไม่มีห้องเรียนในบัญชีนี้</div>
             )}
 
-    <CreateClassroomModal isOpen={openCreate} onClose={() => setOpenCreate(false)} />
-    <JoinClassroomModal isOpen={openJoin} onClose={() => setOpenJoin(false)} />
+            <CreateClassroomModal isOpen={openCreate} onClose={() => setOpenCreate(false)} />
+            <JoinClassroomModal isOpen={openJoin} onClose={() => setOpenJoin(false)} />
           </div>
         </div>
       </div>

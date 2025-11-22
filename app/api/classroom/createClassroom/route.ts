@@ -49,7 +49,6 @@ export async function POST(req: Request) {
       teacher: teacherId,
       students: [],
       tasks: [],
-      classroomID: newClassRef.id,
     });
 
     // ผูก classroom ให้ teacher

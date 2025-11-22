@@ -53,7 +53,7 @@ export default function Navbar() {
       setActiveSection("calendar");
     } else if (pathname.startsWith("/profile")) {
       setActiveSection("profile");
-    } else {
+    } else if (pathname.startsWith("/task")){
       setActiveSection("tasks");
     }
   }, [pathname]);

@@ -20,20 +20,39 @@ export default function JoinClassroomModal({ isOpen, onClose }: Props) {
 
     setLoading(true);
 
-    const res = await fetch("/app/classroom/join-classroom", {
-      method: "POST",
-      body: JSON.stringify({ code }),
-      headers: { "Content-Type": "application/json" },
-    });
+    try {
+      const res = await fetch("/api/classroom/joinClassroom", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+        headers: { "Content-Type": "application/json" },
+      });
 
-    const data = await res.json();
-    setLoading(false);
+      const data = await res.json();
+      setLoading(false);
 
-    if (data.success) {
-      alert(`เข้าร่วมห้อง ${data.name} สำเร็จ!`);
-      onClose();
-    } else {
-      alert("Error: " + data.error);
+      // Check if already joined
+      if (data.alreadyJoined) {
+        alert("คุณอยู่ในห้องเรียนนี้แล้ว");
+        onClose();
+        return;
+      }
+
+      // Check if successful join
+      if (data.success) {
+        alert(`เข้าร่วมห้อง ${data.name} สำเร็จ!`);
+        onClose();
+        // Optionally reload the page to show the new classroom
+        window.location.reload();
+        return;
+      }
+
+      // Handle other errors
+      if (data.error) {
+        alert("Error: " + data.error);
+      }
+    } catch (error) {
+      setLoading(false);
+      alert("เกิดข้อผิดพลาด: " + error);
     }
   }
 

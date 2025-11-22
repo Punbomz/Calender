@@ -634,17 +634,8 @@ export default function CalendarApp() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-black flex flex-col">
-      <header className="bg-white border-b border-gray-200 p-3 sm:p-4">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button className="text-black">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="sm:w-6 sm:h-6">
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
-          <h1 className="text-xl sm:text-2xl font-bold text-black">Calendar</h1>
-        </div>
+      <header className="bg-black text-white p-6 mb-2">
+        <h1 className="text-2xl font-bold">Calendar</h1>
       </header>
 
       <main className="flex-1 overflow-y-auto p-2 sm:p-4">
