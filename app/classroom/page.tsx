@@ -47,7 +47,11 @@ export default function ClassroomPage() {
         const userClassesCol = collection(db, "users", uid, "classrooms");
         const userClassesSnap = await getDocs(userClassesCol);
 
+        console.log("User classrooms found:", userClassesSnap.size);
+        console.log("Classroom IDs:", userClassesSnap.docs.map(d => d.id));
+
         if (userClassesSnap.empty) {
+          console.log("No classrooms in user subcollection");
           setClassrooms([]);
           setLoading(false);
           return;
@@ -55,15 +59,22 @@ export default function ClassroomPage() {
 
         const promises = userClassesSnap.docs.map(async (c) => {
           const classroomID = c.id;
+          console.log("Fetching classroom:", classroomID);
           const classRef = doc(db, "classrooms", classroomID);
           const classSnap = await getDoc(classRef);
-          if (!classSnap.exists()) return null;
+          if (!classSnap.exists()) {
+            console.log("Classroom not found in classrooms collection:", classroomID);
+            return null;
+          }
           const data = classSnap.data() as Omit<Classroom, "classroomID">;
+          console.log("Classroom data:", { classroomID, ...data });
           return { classroomID, ...data } as Classroom;
         });
 
         const result = await Promise.all(promises);
-        setClassrooms(result.filter((c): c is Classroom => c !== null));
+        const validClassrooms = result.filter((c): c is Classroom => c !== null);
+        console.log("Final classrooms:", validClassrooms);
+        setClassrooms(validClassrooms);
       } catch (err) {
         console.error("Error fetching classrooms:", err);
       } finally {
@@ -135,7 +146,8 @@ export default function ClassroomPage() {
               border: "none",
               borderRadius: 10,
               padding: "8px 24px",
-              fontSize: 16,
+              fontSize: 20,
+              fontWeight: "bold",
               cursor: "pointer",
               display: "block",
               margin: "0 auto 16px",
@@ -150,6 +162,7 @@ export default function ClassroomPage() {
               backgroundColor: "#aaaaaa",
               borderRadius: 10,
               padding: 12,
+              color: "black"
             }}
           >
             {classrooms.map((room) => (
@@ -173,19 +186,20 @@ export default function ClassroomPage() {
                   style={{
                     display: "inline-block",
                     width: 24,
-                    marginRight: 8,
-                    fontSize: 18,
+                    marginRight: 15,
+                    fontSize: 20,
                   }}
                 >
                   🏠
                 </span>
                 <span
                   style={{
-                    fontSize: 16,
+                    fontSize: 20,
                     letterSpacing: 1,
+                    fontWeight: "bold",
                   }}
                 >
-                  {room.code}
+                  {room.name}
                 </span>
               </button>
             ))}
@@ -195,29 +209,6 @@ export default function ClassroomPage() {
             )}
           </div>
         </div>
-      </div>
-
-      {/* bottom nav ของนาย */}
-      <div
-        style={{
-          height: 56,
-          backgroundColor: "black",
-          display: "flex",
-          justifyContent: "space-around",
-          alignItems: "center",
-          color: "white",
-          fontSize: 22,
-        }}
-      >
-        <Link href="/calendar" style={{ color: "white" }}>
-          📅
-        </Link>
-        <Link href="/task" style={{ color: "white" }}>
-          📄
-        </Link>
-        <Link href="/profile" style={{ color: "white" }}>
-          👤
-        </Link>
       </div>
     </div>
   );
