@@ -106,20 +106,14 @@ export default function JoinClassroomModal({
 
           {/* Modal */}
           <motion.div
-            className="relative mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl"
+            className="relative mx-4 w-full max-w-sm rounded-2xl bg-[#593831] p-6 shadow-2xl"
             initial={{ y: 24, scale: 0.98, opacity: 0 }}
             animate={{ y: 0, scale: 1, opacity: 1 }}
             exit={{ y: 24, scale: 0.98, opacity: 0 }}
             transition={{ type: "spring", stiffness: 280, damping: 22 }}
           >
-            <button
-              onClick={onClose}
-              className="absolute right-2 top-2 text-gray-500 hover:text-gray-700"
-            >
-              ×
-            </button>
 
-            <h2 className="mb-4 text-center text-xl font-semibold text-gray-900">
+            <h2 className="mb-4 text-center text-xl font-semibold text-white">
               {title}
             </h2>
 
@@ -135,21 +129,21 @@ export default function JoinClassroomModal({
               onChange={(e) => setCode(e.target.value)}
               placeholder="Enter Class Code"
               disabled={loading}
-              className="w-full rounded-full border px-4 py-2 text-sm shadow-inner outline-none ring-2 ring-transparent focus:ring-blue-400"
+              className="w-full rounded-full border px-4 py-2 text-sm shadow-inner outline-none ring-2 ring-transparent focus:ring-white-400"
             />
 
             <div className="flex justify-center gap-3 mt-4">
               <button
                 onClick={onClose}
                 disabled={loading}
-                className="rounded-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
+                className="rounded-full px-4 py-2 text-sm text-white hover:text-gray-900 hover:cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleJoin}
                 disabled={!code.trim() || loading}
-                className="rounded-lg bg-green-600 px-5 py-2 text-sm font-semibold text-white shadow-md enabled:hover:opacity-90 disabled:opacity-40"
+                className="rounded-lg bg-black px-5 py-2 text-sm font-semibold text-white shadow-md hover:cursor-pointer"
               >
                 {loading ? "Joining..." : "Join"}
               </button>

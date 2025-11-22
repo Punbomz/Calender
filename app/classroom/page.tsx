@@ -27,7 +27,6 @@ export default function ClassroomPage() {
   const [openCreate, setOpenCreate] = useState(false);
   const [openJoin, setOpenJoin] = useState(false);
 
-
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
@@ -90,18 +89,29 @@ export default function ClassroomPage() {
     return () => unsub();
   }, []);
 
+  // ✅ Fixed: Set state instead of returning JSX
   const handleCreate = () => {
-    return (
-      <CreateClassroomModal isOpen={openCreate} onClose={() => setOpenCreate(false)} />
-    );
     console.log("Create classroom clicked");
+    setOpenCreate(true);
   };
 
+  // ✅ Fixed: Set state instead of returning JSX
   const handleJoin = () => {
-    return (
-      <JoinClassroomModal isOpen={openJoin} onClose={() => setOpenJoin(false)} />
-    );
     console.log("Join classroom clicked");
+    setOpenJoin(true);
+  };
+
+  // ✅ Add handlers for successful create/join
+  const handleCreateSuccess = (name: string) => {
+    console.log("Classroom created:", name);
+    // Reload to fetch new classrooms
+    window.location.reload();
+  };
+
+  const handleJoinSuccess = (code: string) => {
+    console.log("Joined classroom with code:", code);
+    // Reload to fetch new classrooms
+    window.location.reload();
   };
 
   if (loading) {
@@ -262,8 +272,11 @@ export default function ClassroomPage() {
           {/* ปุ่มด้านบน: ถ้า teacher → Create, ถ้า student → Join */}
           <button
             onClick={() => {
-              if (role === "teacher") handleCreate();
-              else handleJoin();
+              if (role === "teacher") {
+                handleCreate();
+              } else {
+                handleJoin();
+              }
             }}
             style={{
               backgroundColor: "#6c3b2a",
@@ -319,7 +332,7 @@ export default function ClassroomPage() {
                     fontSize: 20,
                   }}
                 >
-                  🏠
+                  🏫
                 </span>
                 <span
                   style={{
@@ -339,6 +352,27 @@ export default function ClassroomPage() {
           </div>
         </div>
       </div>
+
+      {/* ✅ Render modals at the end */}
+      <CreateClassroomModal 
+        isOpen={openCreate} 
+        onClose={() => setOpenCreate(false)}
+        onCreate={handleCreateSuccess}
+      />
+      
+      <JoinClassroomModal 
+        isOpen={openJoin} 
+        onClose={() => setOpenJoin(false)}
+        onJoin={handleJoinSuccess}
+      />
+
+      {/* Styles */}
+      <style>{`
+        .classroom-item:hover {
+          background-color: #676767 !important;
+          color: white !important;
+        }
+      `}</style>
     </div>
   );
 }
