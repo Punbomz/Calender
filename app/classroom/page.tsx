@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { db, auth, onAuthStateChanged } from "@/lib/firebaseClient";
+import CreateClassroomModal from "@/app/api/classroom/createClassroom/route";
+import JoinClassroomModal from "@/app/api/classroom/joinClassroom/route";
 import {
   collection,
   doc,
@@ -22,6 +24,9 @@ export default function ClassroomPage() {
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<"teacher" | "student" | null>(null);
+  const [openCreate, setOpenCreate] = useState(false);
+  const [openJoin, setOpenJoin] = useState(false);
+
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -139,7 +144,10 @@ export default function ClassroomPage() {
         >
           {/* ปุ่มด้านบน: ถ้า teacher → Create, ถ้า student → Join */}
           <button
-            onClick={role === "teacher" ? handleCreate : handleJoin}
+            onClick={() => {
+              if (role === "teacher") setOpenCreate(true);
+              else setOpenJoin(true);
+            }}
             style={{
               backgroundColor: "#6c3b2a",
               color: "white",
@@ -207,6 +215,9 @@ export default function ClassroomPage() {
             {classrooms.length === 0 && (
               <div style={{ padding: 8 }}>ยังไม่มีห้องเรียนในบัญชีนี้</div>
             )}
+
+    <CreateClassroomModal isOpen={openCreate} onClose={() => setOpenCreate(false)} />
+    <JoinClassroomModal isOpen={openJoin} onClose={() => setOpenJoin(false)} />
           </div>
         </div>
       </div>
