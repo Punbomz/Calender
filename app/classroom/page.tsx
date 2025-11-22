@@ -8,11 +8,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  query,
-  where,
-  setDoc,
-  updateDoc,
-  arrayUnion,
 } from "firebase/firestore";
 
 type Classroom = {
@@ -79,78 +74,14 @@ export default function ClassroomPage() {
     return () => unsub();
   }, []);
 
-  // -------------------- TEACHER: CREATE --------------------
   const handleCreate = () => {
-    alert("TODO: หน้าให้ครูสร้าง classroom ใหม่ (เพื่อนน่าจะทำต่อ)");
+    // TODO: Open create classroom modal
+    console.log("Create classroom clicked");
   };
 
-  // -------------------- STUDENT: JOIN --------------------
-  const handleJoin = async () => {
-    const user = auth.currentUser;
-    if (!user) {
-      alert("กรุณาเข้าสู่ระบบก่อน");
-      return;
-    }
-
-    const uid = user.uid;
-    const code = prompt("กรอก Class Code เช่น CPE334-01");
-
-    if (!code) return;
-
-    try {
-      // หา classroom จาก code
-      const q = query(
-        collection(db, "classrooms"),
-        where("code", "==", code)
-      );
-      const snap = await getDocs(q);
-
-      if (snap.empty) {
-        alert("ไม่พบห้องเรียนด้วย code นี้");
-        return;
-      }
-
-      // สมมติว่า code ไม่ซ้ำ เอาอันแรก
-      const classroomDoc = snap.docs[0];
-      const classroomID = classroomDoc.id;
-
-      // 1) เพิ่มใน users/{uid}/classrooms/{classroomID}
-      const userClassRef = doc(db, "users", uid, "classrooms", classroomID);
-      await setDoc(
-        userClassRef,
-        {
-          joinedAt: new Date(),
-        },
-        { merge: true }
-      );
-
-      // 2) เพิ่ม uid ใน classrooms/{classroomID}.students
-      const classroomRef = doc(db, "classrooms", classroomID);
-      await updateDoc(classroomRef, {
-        students: arrayUnion(uid),
-      });
-
-      alert("เข้าร่วมห้องเรียนสำเร็จ ✅");
-      // reload list แบบง่าย ๆ
-      setClassrooms((prev) => {
-        const data = classroomDoc.data() as any;
-        // ถ้าเดิมไม่มี ก็เพิ่มใหม่เข้า state
-        if (prev.find((c) => c.classroomID === classroomID)) return prev;
-        return [
-          ...prev,
-          {
-            classroomID,
-            code: data.code,
-            name: data.name,
-            teacher: data.teacher,
-            students: data.students || [],
-          },
-        ];
-      });
-    } catch (err) {
-      console.error("Join classroom error:", err);
-      alert("เข้าร่วมห้องเรียนไม่สำเร็จ ลองใหม่อีกครั้ง");
-    }
+  const handleJoin = () => {
+    // TODO: Open join classroom modal
+    console.log("Join classroom clicked");
   };
 
   if (loading) {
