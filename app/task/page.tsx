@@ -13,6 +13,7 @@ interface Task {
   taskName: string;
   description: string;
   category: string;
+  classroom?: string; // Add classroom field
   createdAt: { _seconds: number; _nanoseconds: number };
   deadLine: { _seconds: number; _nanoseconds: number };
   isFinished: boolean;
@@ -43,6 +44,7 @@ function TaskPageInner() {
   const searchParams = useSearchParams();
   const viewParam = searchParams.get('view');
   const categoryParam = searchParams.get('category');
+  const classroomParam = searchParams.get('classroom'); // Get classroom parameter
   const { triggerTaskUpdate } = useTaskUpdate();
   
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -50,6 +52,7 @@ function TaskPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<'all' | 'deadline' | 'priority'>('all');
   const [showFinished, setShowFinished] = useState(false);
+  const [classroomName, setClassroomName] = useState<string>(''); // Store classroom name
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTask, setNewTask] = useState<NewTask>({
@@ -62,6 +65,35 @@ function TaskPageInner() {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingTask, setEditingTask] = useState<EditTask | null>(null);
+
+  // Fetch classroom name if classroomParam exists
+  useEffect(() => {
+    const fetchClassroomName = async () => {
+      if (!classroomParam) {
+        setClassroomName('');
+        return;
+      }
+
+      try {
+        const { db } = await import('@/lib/firebaseClient');
+        const { doc, getDoc } = await import('firebase/firestore');
+        
+        const classRef = doc(db, 'classrooms', classroomParam);
+        const classSnap = await getDoc(classRef);
+        
+        if (classSnap.exists()) {
+          setClassroomName(classSnap.data().name || classroomParam);
+        } else {
+          setClassroomName(classroomParam);
+        }
+      } catch (error) {
+        console.error('Error fetching classroom name:', error);
+        setClassroomName(classroomParam);
+      }
+    };
+
+    fetchClassroomName();
+  }, [classroomParam]);
 
   const fetchTasks = async () => {
     try {
@@ -83,6 +115,7 @@ function TaskPageInner() {
       const data = await response.json();
       console.log('Full API response:', data);
       console.log('Tasks array:', data.tasks);
+      console.log('Sample task with classroom:', data.tasks[0]);
       
       setTasks(data.tasks || []);
     } catch (err: any) {
@@ -99,16 +132,10 @@ function TaskPageInner() {
 
   const handleSaveTask = async (files: File[]) => {
     try {
-      // Validate before sending
       if (!newTask.title.trim()) {
         alert('กรุณากรอกชื่องาน');
         return;
       }
-      
-      // if (!newTask.category) {
-      //   alert('กรุณาเลือกหมวดหมู่');
-      //   return;
-      // }
       
       if (!newTask.deadline) {
         alert('กรุณาเลือกกำหนดส่ง');
@@ -117,24 +144,22 @@ function TaskPageInner() {
 
       const deadlineDate = new Date(newTask.deadline);
       
-      // Validate date
       if (isNaN(deadlineDate.getTime())) {
         alert('รูปแบบวันที่ไม่ถูกต้อง');
         return;
       }
       
-      // แก้ไขเป็น form data เพาะมีไฟล์แนบ
       const formData = new FormData();
-        formData.append('taskName', newTask.title.trim());
-        formData.append('description', newTask.description.trim());
-        formData.append('category', newTask.category.trim());
-        formData.append('priorityLevel', newTask.priority); // string ได้ เดี๋ยว API แปลง
-        formData.append('deadLine', deadlineDate.toISOString());
-        files.forEach((file) => {
-          formData.append('files', file);
-        });
+      formData.append('taskName', newTask.title.trim());
+      formData.append('description', newTask.description.trim());
+      formData.append('category', newTask.category.trim());
+      formData.append('priorityLevel', newTask.priority);
+      formData.append('deadLine', deadlineDate.toISOString());
+      files.forEach((file) => {
+        formData.append('files', file);
+      });
 
-      console.log('📤 Sending FormData with task+files:',{
+      console.log('📤 Sending FormData with task+files:', {
         title: newTask.title,
         category: newTask.category,
         deadline: deadlineDate.toISOString(),
@@ -154,10 +179,8 @@ function TaskPageInner() {
         throw new Error(responseData.error || responseData.details || 'Failed to add task');
       }
 
-      // Success!
       setShowAddModal(false);
       
-      // Reset form
       setNewTask({
         title: '',
         description: '',
@@ -166,10 +189,7 @@ function TaskPageInner() {
         deadline: '',
       });
       
-      // Refresh tasks
       await fetchTasks();
-      
-      // Trigger navbar update
       triggerTaskUpdate();
       
       alert('เพิ่มงานสำเร็จ!');
@@ -198,7 +218,6 @@ function TaskPageInner() {
 
   const handleSaveEditedTask = async (updatedTask: EditTask) => {
     try {
-      // Update local state immediately for better UX
       setTasks(prevTasks =>
         prevTasks.map(task =>
           task.id === updatedTask.id
@@ -219,11 +238,7 @@ function TaskPageInner() {
       
       setShowEditModal(false);
       setEditingTask(null);
-      
-      // Trigger navbar update
       triggerTaskUpdate();
-      
-      // Optionally refresh from server to ensure sync
       await fetchTasks();
     } catch (err: any) {
       console.error('Error updating task:', err);
@@ -262,7 +277,6 @@ function TaskPageInner() {
   };
 
   const handleCheckboxChange = async (taskId: string, currentStatus: boolean) => {
-    // Update local state immediately for better UX
     setTasks(prevTasks =>
       prevTasks.map(task =>
         task.id === taskId ? { ...task, isFinished: !currentStatus } : task
@@ -270,7 +284,6 @@ function TaskPageInner() {
     );
     
     try {
-      // Update in database
       const response = await fetch('/api/task/update', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -285,12 +298,10 @@ function TaskPageInner() {
         throw new Error('Failed to update task');
       }
 
-      // Trigger navbar update
       triggerTaskUpdate();
     } catch (error) {
       console.error('Error updating task status:', error);
       alert('อัพเดทสถานะไม่สำเร็จ');
-      // Revert local state on error
       setTasks(prevTasks =>
         prevTasks.map(task =>
           task.id === taskId ? { ...task, isFinished: currentStatus } : task
@@ -303,7 +314,6 @@ function TaskPageInner() {
     const [showMenu, setShowMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    // Close menu when clicking outside
     useEffect(() => {
       function handleClickOutside(event: MouseEvent) {
         if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -314,7 +324,6 @@ function TaskPageInner() {
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Confirm and delete
     const confirmDelete = () => {
       const confirmed = window.confirm(`ยืนยันที่จะลบงาน "${taskName}" หรือไม่?`);
       if (confirmed) handleDeleteTask(taskId);
@@ -322,7 +331,6 @@ function TaskPageInner() {
 
     return (
       <div className="relative inline-block" ref={menuRef}>
-        {/* 3 Dots Button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -334,7 +342,6 @@ function TaskPageInner() {
           <MoreHorizontal size={18} />
         </button>
 
-        {/* Popup Menu */}
         {showMenu && (
           <div
             className="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden"
@@ -345,7 +352,7 @@ function TaskPageInner() {
                 setShowMenu(false);
                 confirmDelete();
               }}
-              className="hover: cursor-pointer w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-red-50 hover:text-red-600 transition"
+              className="hover:cursor-pointer w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-red-50 hover:text-red-600 transition"
             >
               <Trash2 size={16} />
               Delete
@@ -357,7 +364,6 @@ function TaskPageInner() {
   }
 
   const handleDeleteTask = async (taskId: string) => {
-    // Optimistically remove from UI
     setTasks(prev => prev.filter(t => t.id !== taskId));
     const userId = auth.currentUser?.uid;
 
@@ -371,7 +377,6 @@ function TaskPageInner() {
       
       if (!res.ok) throw new Error("Delete failed");
       
-      // Trigger navbar update
       triggerTaskUpdate();
     } catch (e) {
       alert("ลบไม่สำเร็จ จะรีโหลดรายการให้ใหม่");
@@ -379,7 +384,7 @@ function TaskPageInner() {
     }
   };
 
-  // Filter tasks based on view and category
+  // Filter tasks based on view, category, and classroom
   const isCompletedView = viewParam === 'completed';
   
   let displayTasks = tasks;
@@ -396,10 +401,17 @@ function TaskPageInner() {
     displayTasks = displayTasks.filter(task => task.category === categoryParam);
   }
   
+  // Filter by classroom if classroom parameter exists
+  if (classroomParam) {
+    displayTasks = displayTasks.filter(task => task.classroom === classroomParam);
+  }
+  
   const finishedTasks = tasks.filter(task => task.isFinished);
-  // Also filter finished tasks by category if needed
+  // Filter finished tasks by category or classroom if needed
   const filteredFinishedTasks = categoryParam 
     ? finishedTasks.filter(task => task.category === categoryParam)
+    : classroomParam
+    ? finishedTasks.filter(task => task.classroom === classroomParam)
     : finishedTasks;
 
   const sortedDisplayTasks = [...displayTasks].sort((a, b) => {
@@ -415,6 +427,7 @@ function TaskPageInner() {
   // Get view title
   const getViewTitle = () => {
     if (isCompletedView) return 'Completed Tasks';
+    if (classroomParam) return classroomName || classroomParam; // Show classroom name
     if (categoryParam) return categoryParam;
     return null;
   };
@@ -477,8 +490,8 @@ function TaskPageInner() {
           </div>
         )}
 
-        {/* Filter Buttons - Only show when not in completed view and no category selected */}
-        {!isCompletedView && !categoryParam && (
+        {/* Filter Buttons - Show when not in completed view and no category/classroom selected */}
+        {!isCompletedView && !categoryParam && !classroomParam && (
           <div className="flex gap-10 mb-6 justify-center">
             <button
               onClick={() => setFilterType('all')}
@@ -513,8 +526,8 @@ function TaskPageInner() {
           </div>
         )}
 
-        {/* Filter Buttons - Show when category is selected but not completed view */}
-        {!isCompletedView && categoryParam && (
+        {/* Filter Buttons - Show when category or classroom is selected but not completed view */}
+        {!isCompletedView && (categoryParam || classroomParam) && (
           <div className="flex gap-10 mb-6 justify-center">
             <button
               onClick={() => setFilterType('all')}
@@ -554,6 +567,8 @@ function TaskPageInner() {
             <p className="text-xl">
               {isCompletedView 
                 ? 'No completed tasks' 
+                : classroomParam
+                ? `No tasks in "${classroomName || classroomParam}"`
                 : categoryParam 
                 ? `No tasks in "${categoryParam}"` 
                 : 'No tasks found'}
@@ -561,6 +576,8 @@ function TaskPageInner() {
             <p className="text-sm mt-2">
               {isCompletedView 
                 ? 'Complete some tasks to see them here!' 
+                : classroomParam
+                ? `Create tasks in "${classroomName || classroomParam}" classroom to see them here!`
                 : categoryParam
                 ? `Create tasks in "${categoryParam}" category to see them here!`
                 : 'Create your first task to get started!'}

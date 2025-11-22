@@ -90,12 +90,13 @@ export async function GET(request: NextRequest) {
     const tasks = tasksSnapshot.docs.map((doc) => {
       const data = doc.data();
       
-      // ✅ Keep timestamp in _seconds format for frontend compatibility
+      // ✅ Include classroom field if it exists
       return {
         id: doc.id,
         taskName: data.taskName || "",
         description: data.description || "",
         category: data.category || "S",
+        classroom: data.classroom || null, // ✅ Add classroom field
         priorityLevel: data.priorityLevel || 1,
         isFinished: data.isFinished || false,
         attachments: data.attachments || [],
@@ -106,10 +107,10 @@ export async function GET(request: NextRequest) {
     });
 
     console.log(`✅ Found ${tasks.length} tasks`);
-    console.log('📅 Sample task deadlines:', tasks.slice(0, 2).map(t => ({
+    console.log('📚 Sample task with classroom:', tasks.slice(0, 2).map(t => ({
       name: t.taskName,
-      deadLine: t.deadLine,
-      deadLineDate: new Date(t.deadLine._seconds * 1000).toISOString()
+      category: t.category,
+      classroom: t.classroom
     })));
 
     return NextResponse.json({
