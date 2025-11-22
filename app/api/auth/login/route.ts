@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
         googleLinked: true,
         googleEmail: email,
         googleUid: uid,
+        role: 'student',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });

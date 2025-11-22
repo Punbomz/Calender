@@ -114,7 +114,7 @@ export async function loginUser(
         lastLogin: FieldValue.serverTimestamp(),
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
-        role: "user", // Default role
+        role: "student", // Default role
       };
       
       await adminDb.collection("users").doc(uid).set(userData);
