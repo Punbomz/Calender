@@ -3,16 +3,13 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { db, auth, onAuthStateChanged } from "@/lib/firebaseClient";
+import CreateClassroomModal from "./createClassroom";
+import JoinClassroomModal from "./joinClassroom";
 import {
   collection,
   doc,
   getDoc,
   getDocs,
-  query,
-  where,
-  setDoc,
-  updateDoc,
-  arrayUnion,
 } from "firebase/firestore";
 
 type Classroom = {
@@ -27,6 +24,8 @@ export default function ClassroomPage() {
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<"teacher" | "student" | null>(null);
+  const [openCreate, setOpenCreate] = useState(false);
+  const [openJoin, setOpenJoin] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -52,7 +51,11 @@ export default function ClassroomPage() {
         const userClassesCol = collection(db, "users", uid, "classrooms");
         const userClassesSnap = await getDocs(userClassesCol);
 
+        console.log("User classrooms found:", userClassesSnap.size);
+        console.log("Classroom IDs:", userClassesSnap.docs.map(d => d.id));
+
         if (userClassesSnap.empty) {
+          console.log("No classrooms in user subcollection");
           setClassrooms([]);
           setLoading(false);
           return;
@@ -60,15 +63,22 @@ export default function ClassroomPage() {
 
         const promises = userClassesSnap.docs.map(async (c) => {
           const classroomID = c.id;
+          console.log("Fetching classroom:", classroomID);
           const classRef = doc(db, "classrooms", classroomID);
           const classSnap = await getDoc(classRef);
-          if (!classSnap.exists()) return null;
+          if (!classSnap.exists()) {
+            console.log("Classroom not found in classrooms collection:", classroomID);
+            return null;
+          }
           const data = classSnap.data() as Omit<Classroom, "classroomID">;
+          console.log("Classroom data:", { classroomID, ...data });
           return { classroomID, ...data } as Classroom;
         });
 
         const result = await Promise.all(promises);
-        setClassrooms(result.filter((c): c is Classroom => c !== null));
+        const validClassrooms = result.filter((c): c is Classroom => c !== null);
+        console.log("Final classrooms:", validClassrooms);
+        setClassrooms(validClassrooms);
       } catch (err) {
         console.error("Error fetching classrooms:", err);
       } finally {
@@ -79,82 +89,146 @@ export default function ClassroomPage() {
     return () => unsub();
   }, []);
 
-  // -------------------- TEACHER: CREATE --------------------
+  // ✅ Fixed: Set state instead of returning JSX
   const handleCreate = () => {
-    alert("TODO: หน้าให้ครูสร้าง classroom ใหม่ (เพื่อนน่าจะทำต่อ)");
+    console.log("Create classroom clicked");
+    setOpenCreate(true);
   };
 
-  // -------------------- STUDENT: JOIN --------------------
-  const handleJoin = async () => {
-    const user = auth.currentUser;
-    if (!user) {
-      alert("กรุณาเข้าสู่ระบบก่อน");
-      return;
-    }
+  // ✅ Fixed: Set state instead of returning JSX
+  const handleJoin = () => {
+    console.log("Join classroom clicked");
+    setOpenJoin(true);
+  };
 
-    const uid = user.uid;
-    const code = prompt("กรอก Class Code เช่น CPE334-01");
+  // ✅ Add handlers for successful create/join
+  const handleCreateSuccess = (name: string) => {
+    console.log("Classroom created:", name);
+    // Reload to fetch new classrooms
+    window.location.reload();
+  };
 
-    if (!code) return;
-
-    try {
-      // หา classroom จาก code
-      const q = query(
-        collection(db, "classrooms"),
-        where("code", "==", code)
-      );
-      const snap = await getDocs(q);
-
-      if (snap.empty) {
-        alert("ไม่พบห้องเรียนด้วย code นี้");
-        return;
-      }
-
-      // สมมติว่า code ไม่ซ้ำ เอาอันแรก
-      const classroomDoc = snap.docs[0];
-      const classroomID = classroomDoc.id;
-
-      // 1) เพิ่มใน users/{uid}/classrooms/{classroomID}
-      const userClassRef = doc(db, "users", uid, "classrooms", classroomID);
-      await setDoc(
-        userClassRef,
-        {
-          joinedAt: new Date(),
-        },
-        { merge: true }
-      );
-
-      // 2) เพิ่ม uid ใน classrooms/{classroomID}.students
-      const classroomRef = doc(db, "classrooms", classroomID);
-      await updateDoc(classroomRef, {
-        students: arrayUnion(uid),
-      });
-
-      alert("เข้าร่วมห้องเรียนสำเร็จ ✅");
-      // reload list แบบง่าย ๆ
-      setClassrooms((prev) => {
-        const data = classroomDoc.data() as any;
-        // ถ้าเดิมไม่มี ก็เพิ่มใหม่เข้า state
-        if (prev.find((c) => c.classroomID === classroomID)) return prev;
-        return [
-          ...prev,
-          {
-            classroomID,
-            code: data.code,
-            name: data.name,
-            teacher: data.teacher,
-            students: data.students || [],
-          },
-        ];
-      });
-    } catch (err) {
-      console.error("Join classroom error:", err);
-      alert("เข้าร่วมห้องเรียนไม่สำเร็จ ลองใหม่อีกครั้ง");
-    }
+  const handleJoinSuccess = (code: string) => {
+    console.log("Joined classroom with code:", code);
+    // Reload to fetch new classrooms
+    window.location.reload();
   };
 
   if (loading) {
-    return <div style={{ padding: 16 }}>Loading...</div>;
+    return (
+      <div
+        style={{
+          width: "100%",
+          minHeight: "100vh",
+          backgroundColor: "#e5e5e5",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Top bar */}
+        <div
+          style={{
+            backgroundColor: "black",
+            color: "white",
+            padding: "12px 16px",
+            fontFamily: "monospace",
+            fontSize: 20,
+          }}
+        >
+          My Classroom
+        </div>
+
+        {/* Content with skeleton */}
+        <div
+          style={{
+            flex: 1,
+            padding: 16,
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 480,
+            }}
+          >
+            {/* Button skeleton */}
+            <div
+              style={{
+                backgroundColor: "#c0c0c0",
+                borderRadius: 10,
+                padding: "8px 24px",
+                fontSize: 20,
+                height: 40,
+                width: 120,
+                margin: "0 auto 16px",
+                animation: "pulse 1.5s ease-in-out infinite",
+              }}
+            />
+
+            {/* List skeleton */}
+            <div
+              style={{
+                backgroundColor: "#aaaaaa",
+                borderRadius: 10,
+                padding: 12,
+              }}
+            >
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "8px 6px",
+                    marginBottom: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 24,
+                      height: 24,
+                      backgroundColor: "#c0c0c0",
+                      borderRadius: 4,
+                      marginRight: 15,
+                      animation: "pulse 1.5s ease-in-out infinite",
+                    }}
+                  />
+                  <div
+                    style={{
+                      height: 20,
+                      backgroundColor: "#c0c0c0",
+                      borderRadius: 4,
+                      flex: 1,
+                      maxWidth: 200,
+                      animation: "pulse 1.5s ease-in-out infinite",
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Keyframe animation */}
+        <style>{`
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.5;
+            }
+          }
+          
+          .classroom-item:hover {
+            background-color: #6c3b2a !important;
+            color: white !important;
+          }
+        `}</style>
+      </div>
+    );
   }
 
   return (
@@ -197,14 +271,21 @@ export default function ClassroomPage() {
         >
           {/* ปุ่มด้านบน: ถ้า teacher → Create, ถ้า student → Join */}
           <button
-            onClick={role === "teacher" ? handleCreate : handleJoin}
+            onClick={() => {
+              if (role === "teacher") {
+                handleCreate();
+              } else {
+                handleJoin();
+              }
+            }}
             style={{
               backgroundColor: "#6c3b2a",
               color: "white",
               border: "none",
               borderRadius: 10,
               padding: "8px 24px",
-              fontSize: 16,
+              fontSize: 20,
+              fontWeight: "bold",
               cursor: "pointer",
               display: "block",
               margin: "0 auto 16px",
@@ -219,6 +300,7 @@ export default function ClassroomPage() {
               backgroundColor: "#aaaaaa",
               borderRadius: 10,
               padding: 12,
+              color: "black"
             }}
           >
             {classrooms.map((room) => (
@@ -227,6 +309,7 @@ export default function ClassroomPage() {
                 onClick={() =>
                   console.log("Open classroom:", room.classroomID)
                 }
+                className="classroom-item"
                 style={{
                   width: "100%",
                   display: "flex",
@@ -236,25 +319,29 @@ export default function ClassroomPage() {
                   background: "transparent",
                   textAlign: "left",
                   cursor: "pointer",
+                  borderRadius: 8,
+                  transition: "all 0.2s ease",
+                  color: "black",
                 }}
               >
                 <span
                   style={{
                     display: "inline-block",
                     width: 24,
-                    marginRight: 8,
-                    fontSize: 18,
+                    marginRight: 15,
+                    fontSize: 20,
                   }}
                 >
-                  🏠
+                  🏫
                 </span>
                 <span
                   style={{
-                    fontSize: 16,
+                    fontSize: 20,
                     letterSpacing: 1,
+                    fontWeight: "bold",
                   }}
                 >
-                  {room.code}
+                  {room.name}
                 </span>
               </button>
             ))}
@@ -266,28 +353,26 @@ export default function ClassroomPage() {
         </div>
       </div>
 
-      {/* bottom nav ของนาย */}
-      <div
-        style={{
-          height: 56,
-          backgroundColor: "black",
-          display: "flex",
-          justifyContent: "space-around",
-          alignItems: "center",
-          color: "white",
-          fontSize: 22,
-        }}
-      >
-        <Link href="/calendar" style={{ color: "white" }}>
-          📅
-        </Link>
-        <Link href="/task" style={{ color: "white" }}>
-          📄
-        </Link>
-        <Link href="/profile" style={{ color: "white" }}>
-          👤
-        </Link>
-      </div>
+      {/* ✅ Render modals at the end */}
+      <CreateClassroomModal 
+        isOpen={openCreate} 
+        onClose={() => setOpenCreate(false)}
+        onCreate={handleCreateSuccess}
+      />
+      
+      <JoinClassroomModal 
+        isOpen={openJoin} 
+        onClose={() => setOpenJoin(false)}
+        onJoin={handleJoinSuccess}
+      />
+
+      {/* Styles */}
+      <style>{`
+        .classroom-item:hover {
+          background-color: #676767 !important;
+          color: white !important;
+        }
+      `}</style>
     </div>
   );
 }
