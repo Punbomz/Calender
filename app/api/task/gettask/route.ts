@@ -3,25 +3,50 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { cookies } from "next/headers";
 
-// Helper function to convert Firestore Timestamp to ISO string
-function convertTimestamp(timestamp: any): string {
-  if (!timestamp) return new Date().toISOString();
+// Helper function to ensure timestamp is in correct format
+function normalizeTimestamp(timestamp: any): { _seconds: number; _nanoseconds: number } {
+  if (!timestamp) {
+    const now = Date.now();
+    return {
+      _seconds: Math.floor(now / 1000),
+      _nanoseconds: (now % 1000) * 1000000
+    };
+  }
   
-  // If it's already a string, return it
-  if (typeof timestamp === 'string') return timestamp;
-  
-  // If it's a Firestore Timestamp with _seconds
+  // If it's already in the correct format
   if (timestamp._seconds !== undefined) {
-    return new Date(timestamp._seconds * 1000).toISOString();
+    return {
+      _seconds: timestamp._seconds,
+      _nanoseconds: timestamp._nanoseconds || 0
+    };
   }
   
   // If it has toDate method (Firestore Timestamp)
   if (typeof timestamp.toDate === 'function') {
-    return timestamp.toDate().toISOString();
+    const date = timestamp.toDate();
+    const ms = date.getTime();
+    return {
+      _seconds: Math.floor(ms / 1000),
+      _nanoseconds: (ms % 1000) * 1000000
+    };
+  }
+  
+  // If it's a string
+  if (typeof timestamp === 'string') {
+    const date = new Date(timestamp);
+    const ms = date.getTime();
+    return {
+      _seconds: Math.floor(ms / 1000),
+      _nanoseconds: (ms % 1000) * 1000000
+    };
   }
   
   // Fallback
-  return new Date().toISOString();
+  const now = Date.now();
+  return {
+    _seconds: Math.floor(now / 1000),
+    _nanoseconds: (now % 1000) * 1000000
+  };
 }
 
 // GET - Fetch tasks
@@ -44,7 +69,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category");
     const isFinished = searchParams.get("isFinished");
 
-    console.log('📥 Fetching tasks for user:', userId);
+    console.log('🔥 Fetching tasks for user:', userId);
     console.log('📊 Filters:', { category, isFinished });
 
     let tasksQuery: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = adminDb
@@ -65,7 +90,7 @@ export async function GET(request: NextRequest) {
     const tasks = tasksSnapshot.docs.map((doc) => {
       const data = doc.data();
       
-      // ✅ แปลง Timestamp เป็น ISO string ก่อนส่ง
+      // ✅ Keep timestamp in _seconds format for frontend compatibility
       return {
         id: doc.id,
         taskName: data.taskName || "",
@@ -74,9 +99,9 @@ export async function GET(request: NextRequest) {
         priorityLevel: data.priorityLevel || 1,
         isFinished: data.isFinished || false,
         attachments: data.attachments || [],
-        deadLine: convertTimestamp(data.deadLine),    // ✅ แปลงเป็น ISO string
-        createdAt: convertTimestamp(data.createdAt),  // ✅ แปลงเป็น ISO string
-        updatedAt: data.updatedAt ? convertTimestamp(data.updatedAt) : null,
+        deadLine: normalizeTimestamp(data.deadLine),
+        createdAt: normalizeTimestamp(data.createdAt),
+        updatedAt: data.updatedAt ? normalizeTimestamp(data.updatedAt) : null,
       };
     });
 
@@ -84,7 +109,7 @@ export async function GET(request: NextRequest) {
     console.log('📅 Sample task deadlines:', tasks.slice(0, 2).map(t => ({
       name: t.taskName,
       deadLine: t.deadLine,
-      type: typeof t.deadLine
+      deadLineDate: new Date(t.deadLine._seconds * 1000).toISOString()
     })));
 
     return NextResponse.json({
