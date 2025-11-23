@@ -128,16 +128,8 @@ export default function ClassroomPage() {
         }}
       >
         {/* Top bar */}
-        <div
-          style={{
-            backgroundColor: "black",
-            color: "white",
-            padding: "12px 16px",
-            fontFamily: "monospace",
-            fontSize: 20,
-          }}
-        >
-          My Classroom
+        <div className="bg-black text-white p-6">
+          <h1 className="text-2xl font-bold">My Classroom</h1>
         </div>
 
         {/* Content with skeleton */}
@@ -243,18 +235,10 @@ export default function ClassroomPage() {
         flexDirection: "column",
       }}
     >
-      {/* Top bar */}
-      <div
-        style={{
-          backgroundColor: "black",
-          color: "white",
-          padding: "12px 16px",
-          fontFamily: "monospace",
-          fontSize: 20,
-        }}
-      >
-        My Classroom
-      </div>
+      {/* Header */}
+        <header className="bg-black text-white p-6">
+          <h1 className="text-2xl font-bold">My Classroom</h1>
+        </header>
 
       {/* Content */}
       <div
@@ -309,7 +293,7 @@ export default function ClassroomPage() {
                   console.log("Open classroom:", room.classroomID)
                   router.push(`/classroom/info?id=${room.classroomID}`);
                 }}
-                className="classroom-item mb-3"
+                className="classroom-item"
                 style={{
                   width: "100%",
                   display: "flex",
