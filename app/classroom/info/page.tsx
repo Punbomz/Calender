@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { db } from "@/lib/firebaseClient";
 import {
   doc,
@@ -21,6 +21,7 @@ interface Classroom {
 export default function InfoClassroomPage() {
   const searchParams = useSearchParams();
   const classroomIdFromUrl = searchParams.get("id");
+  const router = useRouter();
 
   const [classroom, setClassroom] = useState<Classroom | null>(null);
   const [tasks, setTasks] = useState<string[]>([]);
@@ -177,7 +178,8 @@ export default function InfoClassroomPage() {
             </div>
           </div>
 
-          <button className="mt-2 w-full rounded-lg bg-white px-4 py-2 text-black">
+          <button className="mt-2 w-full rounded-lg bg-white px-4 py-2 text-black"
+                  onClick={() => router.back()}>
             ⬅ Leave
           </button>
         </div>
