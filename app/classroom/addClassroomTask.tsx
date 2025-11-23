@@ -32,6 +32,8 @@ export default function AddClassroomTaskModal({
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [filePreviews, setFilePreviews] = useState<string[]>([]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -41,6 +43,43 @@ export default function AddClassroomTaskModal({
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    
+    const filesArray = Array.from(e.target.files);
+    setSelectedFiles(filesArray);
+    
+    // Create preview URLs for images
+    const newPreviews: string[] = [];
+    filesArray.forEach(file => {
+      if (file.type.startsWith('image/')) {
+        newPreviews.push(URL.createObjectURL(file));
+      } else {
+        newPreviews.push(''); // Empty string for non-images
+      }
+    });
+    
+    // Revoke old preview URLs
+    filePreviews.forEach(preview => {
+      if (preview) URL.revokeObjectURL(preview);
+    });
+    
+    setFilePreviews(newPreviews);
+  };
+
+  const handleRemoveFile = (index: number) => {
+    const newFiles = selectedFiles.filter((_, i) => i !== index);
+    const newPreviews = filePreviews.filter((_, i) => i !== index);
+    
+    // Revoke the URL of the removed file
+    if (filePreviews[index]) {
+      URL.revokeObjectURL(filePreviews[index]);
+    }
+    
+    setSelectedFiles(newFiles);
+    setFilePreviews(newPreviews);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,20 +100,23 @@ export default function AddClassroomTaskModal({
     setLoading(true);
 
     try {
-      // เรียกใช้งาน API จริง
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append("classroomId", classroomId);
+      formData.append("taskName", taskData.title);
+      formData.append("description", taskData.description);
+      formData.append("deadLine", new Date(taskData.deadline).toISOString());
+      formData.append("category", taskData.category || "Homework");
+
+      // Append files
+      selectedFiles.forEach((file) => {
+        formData.append("files", file);
+      });
+
       const response = await fetch("/api/classroom/task/add", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         credentials: "include",
-        body: JSON.stringify({
-          classroomId,
-          taskName: taskData.title,
-          description: taskData.description,
-          deadLine: new Date(taskData.deadline).toISOString(),
-          category: taskData.category || "Homework",
-        }),
+        body: formData,
       });
 
       const data = await response.json();
@@ -96,7 +138,7 @@ export default function AddClassroomTaskModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-all">
-      <div className="bg-[#6B4E3D] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden relative animate-in fade-in zoom-in duration-200 border-2 border-[#5A3E2F]">
+      <div className="bg-[#6B4E3D] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden relative animate-in fade-in zoom-in duration-200 border-2 border-[#5A3E2F] max-h-[90vh] overflow-y-auto">
         
         {/* Close Button */}
         <button 
@@ -190,7 +232,6 @@ export default function AddClassroomTaskModal({
                             className="w-full pl-10 pr-10 py-3 bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40 appearance-none transition-all cursor-pointer text-white"
                             disabled={loading}
                         >
-                            <option value="" className="bg-[#6B4E3D] text-white">เลือกหมวดหมู่ (ค่าเริ่มต้น: Homework)</option>
                             <option value="Homework" className="bg-[#6B4E3D] text-white">Homework (การบ้าน)</option>
                             <option value="Lab" className="bg-[#6B4E3D] text-white">Lab (ปฏิบัติการ)</option>
                             <option value="Project" className="bg-[#6B4E3D] text-white">Project (โครงงาน)</option>
@@ -218,11 +259,80 @@ export default function AddClassroomTaskModal({
                             value={taskData.description}
                             onChange={handleInputChange}
                             placeholder="รายละเอียดเพิ่มเติมของงาน..."
-                            rows={5}
+                            rows={4}
                             className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40 resize-none transition-all placeholder:text-white/40 text-white"
                             disabled={loading}
                         />
                     </div>
+                </div>
+
+                {/* File Upload */}
+                <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-white/90">
+                        แนบไฟล์ / รูปภาพ
+                    </label>
+                    <input
+                        type="file"
+                        multiple
+                        accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+                        onChange={handleFileChange}
+                        disabled={loading}
+                        className="w-full p-3 bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/30 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-white/20 file:text-white hover:file:bg-white/30 cursor-pointer"
+                    />
+
+                    {/* File Previews */}
+                    {selectedFiles.length > 0 && (
+                        <div className="mt-4">
+                            <p className="text-sm font-semibold mb-2 text-white/90">ไฟล์ที่เลือก ({selectedFiles.length})</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                {selectedFiles.map((file, index) => {
+                                    const isImage = file.type.startsWith('image/');
+                                    const isPDF = file.type === 'application/pdf';
+                                    
+                                    return (
+                                        <div
+                                            key={index}
+                                            className="relative group overflow-hidden rounded-lg border-2 border-white/20 hover:border-white/40 transition-all duration-200"
+                                        >
+                                            {isImage && filePreviews[index] ? (
+                                                <div className="aspect-square bg-white/10">
+                                                    <img
+                                                        src={filePreviews[index]}
+                                                        alt={file.name}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="aspect-square bg-white/10 flex flex-col items-center justify-center p-3">
+                                                    <div className="text-3xl mb-2">
+                                                        {isPDF ? '📄' : '📎'}
+                                                    </div>
+                                                    <p className="text-xs text-center text-white/70 break-all line-clamp-2">
+                                                        {file.name}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            
+                                            {/* Remove button */}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveFile(index)}
+                                                className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                                title="ลบไฟล์"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                            
+                                            {/* File size */}
+                                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-xs text-white p-1 text-center">
+                                                {(file.size / 1024).toFixed(1)} KB
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Buttons */}

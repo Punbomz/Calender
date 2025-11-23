@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import AddClassroomTaskModal from "@/app/classroom/addClassroomTask";
 
 interface Classroom {
   id: string;
@@ -24,6 +25,7 @@ export default function InfoClassroomPage() {
   const [userRole, setUserRole] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
 
   useEffect(() => {
     const id = classroomIdFromUrl; 
@@ -98,6 +100,23 @@ export default function InfoClassroomPage() {
     }
   };
 
+  const handleTaskAdded = () => {
+    // Refresh the page data after adding a task
+    const id = classroomIdFromUrl;
+    if (id) {
+      fetch(`/api/classroom/info?id=${id}`)
+        .then(res => res.json())
+        .then(data => {
+          setClassroom(data.classroom);
+          setTeacherName(data.teacherName);
+          setTasks(data.tasks);
+          setStudents(data.students);
+          setUserRole(data.userRole);
+        })
+        .catch(err => console.error("Error refreshing data:", err));
+    }
+  };
+
   const handleLeaveClassroom = async () => {
     if (!window.confirm("Are you sure you want to leave this classroom? All related tasks will be deleted.")) {
       return;
@@ -132,8 +151,8 @@ export default function InfoClassroomPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col bg-gray-900">
-        <div className="bg-black text-white p-6">
-          <h1 className="text-2xl font-bold">My Classroom</h1>
+        <div className="bg-black px-4 py-3 text-xl font-bold text-white">
+          My Classroom
         </div>
         <div className="flex flex-1 items-start justify-center bg-gray-200 px-4 py-8">
           <div className="w-full max-w-3xl rounded-2xl bg-[#5b3526] p-6 shadow-xl animate-pulse">
@@ -188,8 +207,8 @@ export default function InfoClassroomPage() {
   if (error || !classroom) {
     return (
       <div className="flex min-h-screen flex-col bg-gray-900">
-        <div className="bg-black text-white p-6">
-          <h1 className="text-2xl font-bold">My Classroom</h1>
+        <div className="bg-black px-4 py-3 text-xl font-bold text-white">
+          My Classroom
         </div>
         <div className="flex flex-1 items-start justify-center bg-gray-200 pt-8 px-4">
           <div className="rounded-xl bg-white px-4 py-3 text-gray-800 shadow">
@@ -203,8 +222,8 @@ export default function InfoClassroomPage() {
   return (
     <div className="flex min-h-screen flex-col bg-gray-900">
       {/* Header */}
-      <div className="bg-black text-white p-6">
-        <h1 className="text-2xl font-bold">My Classroom</h1>
+      <div className="bg-black px-4 py-3 text-xl font-bold text-white">
+        My Classroom
       </div>
 
       {/* Content - Start from top */}
@@ -266,7 +285,7 @@ export default function InfoClassroomPage() {
           </div>
 
           <button 
-            className="mt-4 w-full rounded-lg bg-white px-4 py-3 text-lg font-semibold text-black hover:bg-gray-100 transition-colors"
+            className="mt-4 w-full rounded-lg bg-white px-4 py-3 text-lg font-semibold text-black hover:bg-gray-100 transition-colors hover:cursor-pointer"
             onClick={() => router.back()}
           >
             ⬅️ Back
@@ -276,18 +295,15 @@ export default function InfoClassroomPage() {
           {userRole === "teacher" && (
             <div className="mt-3 space-y-2">
               <button 
-                className="w-full rounded-lg bg-blue-500 px-4 py-3 text-lg font-semibold text-white hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => {
-                  // TODO: Navigate to add task page
-                  console.log("Add task clicked");
-                }}
+                className="hover:cursor-pointer w-full rounded-lg bg-blue-500 px-4 py-3 text-lg font-semibold text-white hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => setShowAddTaskModal(true)}
                 disabled={actionLoading}
               >
                 ➕ Add Task
               </button>
               
               <button 
-                className="w-full rounded-lg bg-red-500 px-4 py-3 text-lg font-semibold text-white hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="hover:cursor-pointer w-full rounded-lg bg-red-500 px-4 py-3 text-lg font-semibold text-white hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleDeleteClassroom}
                 disabled={actionLoading}
               >
@@ -296,9 +312,9 @@ export default function InfoClassroomPage() {
             </div>
           )}
 
-          {userRole !== "teacher" && (
+          {userRole === "student" && (
             <button 
-              className="mt-3 w-full rounded-lg bg-yellow-500 px-4 py-3 text-lg font-semibold text-white hover:bg-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="hover:cursor-pointer mt-3 w-full rounded-lg bg-yellow-500 px-4 py-3 text-lg font-semibold text-white hover:bg-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleLeaveClassroom}
               disabled={actionLoading}
             >
@@ -307,6 +323,16 @@ export default function InfoClassroomPage() {
           )}
         </div>
       </div>
+
+      {/* Add Task Modal */}
+      {showAddTaskModal && classroom && (
+        <AddClassroomTaskModal
+          classroomId={classroom.id}
+          classroomName={classroom.name}
+          onClose={() => setShowAddTaskModal(false)}
+          onTaskAdded={handleTaskAdded}
+        />
+      )}
     </div>
   );
 }

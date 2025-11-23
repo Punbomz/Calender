@@ -77,11 +77,22 @@ export async function GET(request: NextRequest) {
     }
 
     // ---------- 3) Fetch tasks from subcollection ----------
+    console.log(`📋 Fetching tasks for classroom: ${classroomId}`);
     const tasksCol = classroomRef.collection("tasks");
     const tasksSnap = await tasksCol.get();
+    
+    console.log(`📊 Found ${tasksSnap.size} tasks in subcollection`);
+    
     const tasks = tasksSnap.docs
-      .map((doc) => doc.data().name as string)
+      .map((doc) => {
+        const data = doc.data();
+        console.log(`Task data:`, data);
+        // Try both 'taskName' and 'name' fields for compatibility
+        return data.taskName || data.name || "";
+      })
       .filter(Boolean);
+
+    console.log(`✅ Processed tasks:`, tasks);
 
     // ---------- 4) Fetch students ----------
     const studentsArray = (classroomData?.students as string[]) || [];
