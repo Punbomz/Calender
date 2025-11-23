@@ -17,7 +17,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await adminAuth.verifySessionCookie(session, true);
+    const decoded = await adminAuth.verifySessionCookie(session, true);
+    const teacherId = decoded.uid;
+
+    // ดึงข้อมูล classroom
+    const classroomDoc = await adminDb
+      .collection("classrooms")
+      .doc(classroomId)
+      .get();
+
+    if (!classroomDoc.exists) {
+      return NextResponse.json({ error: "ไม่พบห้องเรียนนี้" }, { status: 404 });
+    }
+
+    const classroomData = classroomDoc.data();
+
+    // ตรวจสอบว่าเป็นครูของห้องเรียนนี้หรือไม่
+    if (classroomData?.teacher !== teacherId) {
+      return NextResponse.json({ error: "คุณไม่มีสิทธิ์ลบห้องเรียนนี้" }, { status: 403 });
+    }
 
     // ✅ ลบ classroom document อย่างเดียว
     await adminDb.collection("classrooms").doc(classroomId).delete();
