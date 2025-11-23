@@ -264,10 +264,7 @@ export default function ClassroomPage() {
         }}
       >
         <div
-          style={{
-            width: "100%",
-            maxWidth: 480,
-          }}
+          className="w-xl"
         >
           {/* ปุ่มด้านบน: ถ้า teacher → Create, ถ้า student → Join */}
           <button
@@ -309,7 +306,7 @@ export default function ClassroomPage() {
                 onClick={() =>
                   console.log("Open classroom:", room.classroomID)
                 }
-                className="classroom-item"
+                className="classroom-item mb-3"
                 style={{
                   width: "100%",
                   display: "flex",
