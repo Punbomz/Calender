@@ -76,23 +76,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // ---------- 3) Fetch tasks from subcollection ----------
+    // ---------- 3) Fetch tasks from subcollection with IDs ----------
     console.log(`📋 Fetching tasks for classroom: ${classroomId}`);
     const tasksCol = classroomRef.collection("tasks");
     const tasksSnap = await tasksCol.get();
     
     console.log(`📊 Found ${tasksSnap.size} tasks in subcollection`);
     
+    // Return array of objects with id and name instead of just names
     const tasks = tasksSnap.docs
       .map((doc) => {
         const data = doc.data();
-        console.log(`Task data:`, data);
-        // Try both 'taskName' and 'name' fields for compatibility
-        return data.taskName || data.name || "";
-      })
-      .filter(Boolean);
+        const taskName = data.taskName || data.name || "Untitled Task";
+        console.log(`Task ${doc.id}:`, taskName);
+        
+        return {
+          id: doc.id,
+          name: taskName
+        };
+      });
 
-    console.log(`✅ Processed tasks:`, tasks);
+    console.log(`✅ Processed ${tasks.length} tasks with IDs`);
 
     // ---------- 4) Fetch students ----------
     const studentsArray = (classroomData?.students as string[]) || [];
@@ -165,7 +169,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       classroom,
       teacherName,
-      tasks,
+      tasks, // Now returns array of {id, name} objects
       students,
       userRole,
     });
@@ -177,3 +181,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const dynamic = 'force-dynamic';
