@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation"; 
 import { db, auth, onAuthStateChanged } from "@/lib/firebaseClient";
 import CreateClassroomModal from "./createClassroom";
 import JoinClassroomModal from "./joinClassroom";
@@ -26,6 +27,7 @@ export default function ClassroomPage() {
   const [role, setRole] = useState<"teacher" | "student" | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [openJoin, setOpenJoin] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -303,9 +305,10 @@ export default function ClassroomPage() {
             {classrooms.map((room) => (
               <button
                 key={room.classroomID}
-                onClick={() =>
+                onClick={() => {
                   console.log("Open classroom:", room.classroomID)
-                }
+                  router.push(`/classroom/info?id=${room.classroomID}`);
+                }}
                 className="classroom-item mb-3"
                 style={{
                   width: "100%",
