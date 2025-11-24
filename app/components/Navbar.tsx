@@ -50,6 +50,7 @@ export default function Navbar() {
   const [completedTasksCount, setCompletedTasksCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [showDelete, setShowDelete] = useState(false);
+  const [isTeacher, setIsTeacher] = useState<boolean>(false);
 
   // Update active section based on current pathname
   useEffect(() => {
@@ -65,7 +66,7 @@ export default function Navbar() {
   // Fetch tasks, categories, and classrooms when taskUpdateTrigger changes
   useEffect(() => {
     fetchTasksAndCategories();
-    fetchClassrooms();
+    fetchClassrooms(); // Always fetch to determine if user is teacher
   }, [taskUpdateTrigger]);
 
   // Fetch classrooms using API
@@ -86,7 +87,23 @@ export default function Navbar() {
       const data = await response.json();
       console.log("📚 Classrooms fetched:", data);
       
-      setClassrooms(data.classrooms || []);
+      // Check if user is a teacher from the first classroom (they're all the same user)
+      if (data.classrooms && data.classrooms.length > 0) {
+        const userIsTeacher = data.classrooms[0].isTeacher;
+        setIsTeacher(userIsTeacher);
+        console.log("👤 User is teacher:", userIsTeacher);
+        
+        // Only set classrooms if user is NOT a teacher
+        if (!userIsTeacher) {
+          setClassrooms(data.classrooms || []);
+          console.log("✅ Displaying classrooms for student");
+        } else {
+          setClassrooms([]);
+          console.log("⏭️ Hiding classrooms for teacher");
+        }
+      } else {
+        setClassrooms([]);
+      }
     } catch (error) {
       console.error("❌ Error fetching classrooms:", error);
       setClassrooms([]);
@@ -227,6 +244,7 @@ export default function Navbar() {
     }
   };
 
+  // Rest of the component remains the same...
   return (
     <>
       {/* Left Icon Sidebar (Narrow) - Dark Theme */}
@@ -301,8 +319,8 @@ export default function Navbar() {
               </button>
             </div>
 
-            {/* Classrooms Section */}
-            {classrooms.length > 0 && (
+            {/* Classrooms Section - Only show if NOT a teacher */}
+            {!isTeacher && classrooms.length > 0 && (
               <div className="mb-6">
                 <div className="flex items-center justify-between px-3 mb-2">
                   <h3 className="text-xs font-semibold text-gray-500 uppercase">
@@ -472,8 +490,8 @@ export default function Navbar() {
                 </button>
               </div>
 
-              {/* Classrooms Section - Mobile */}
-              {classrooms.length > 0 && (
+              {/* Classrooms Section - Mobile - Only show if NOT a teacher */}
+              {!isTeacher && classrooms.length > 0 && (
                 <div className="mb-6">
                   <div className="flex items-center justify-between px-3 mb-2">
                     <h3 className="text-xs font-semibold text-gray-500 uppercase">
