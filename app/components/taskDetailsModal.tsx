@@ -619,20 +619,21 @@ export default function ClassroomTaskDetailsModal({
               
               <div className="flex items-center gap-4">
                 {editedData && (
-                  <div className="row-gap-4 flex items-center gap-4">
+                  <div className="row-gap-4 flex flex-wrap items-center gap-4">
                     {isEditing ? (
                       <>
                         <button
                           onClick={handleCancelEdit}
                           disabled={saving}
-                          className="hover:cursor-pointer px-6 py-3 text-white/80 hover:text-white font-medium rounded-xl transition hover:bg-white/10"
+                          className="w-full sm:w-auto hover:cursor-pointer px-6 py-3 text-white/80 hover:text-white font-medium rounded-xl transition hover:bg-white/10"
                         >
                           ยกเลิก
                         </button>
+
                         <button
                           onClick={handleSave}
                           disabled={saving}
-                          className="hover:cursor-pointer px-8 py-3 bg-white text-[#593831] hover:bg-white/90 font-medium rounded-xl transition shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+                          className="w-full sm:w-auto hover:cursor-pointer px-8 py-3 bg-white text-[#593831] hover:bg-white/90 font-medium rounded-xl transition shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                           {saving ? (
                             <>
@@ -652,15 +653,16 @@ export default function ClassroomTaskDetailsModal({
                         {isTeacher && (
                           <button
                             onClick={handleEdit}
-                            className="hover:cursor-pointer px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition shadow-lg flex items-center gap-2"
+                            className="w-full sm:w-auto hover:cursor-pointer px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition shadow-lg flex items-center justify-center gap-2"
                           >
                             <Edit2 size={18} />
                             แก้ไข
                           </button>
                         )}
+
                         <button
                           onClick={onClose}
-                          className="hover:cursor-pointer px-8 py-3 bg-white text-[#593831] hover:bg-white/90 font-medium rounded-xl transition shadow-lg"
+                          className="w-full sm:w-auto hover:cursor-pointer px-8 py-3 bg-white text-[#593831] hover:bg-white/90 font-medium rounded-xl transition shadow-lg"
                         >
                           ปิด
                         </button>
