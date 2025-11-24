@@ -234,6 +234,8 @@ function TaskPageInner() {
 
   const handleSaveEditedTask = async (updatedTask: EditTask) => {
     try {
+      // The EditTask modal already handles the API call
+      // Just update local state and refresh
       setTasks(prevTasks =>
         prevTasks.map(task =>
           task.id === updatedTask.id
@@ -247,6 +249,8 @@ function TaskPageInner() {
                   _seconds: Math.floor(new Date(updatedTask.deadline).getTime() / 1000),
                   _nanoseconds: 0,
                 },
+                isFinished: updatedTask.isFinished || false,
+                attachments: updatedTask.attachments || [],
               }
             : task
         )
@@ -255,6 +259,8 @@ function TaskPageInner() {
       setShowEditModal(false);
       setEditingTask(null);
       triggerTaskUpdate();
+      
+      // Refresh to get latest data from server
       await fetchTasks();
     } catch (err: any) {
       console.error('Error updating task:', err);
@@ -301,24 +307,26 @@ function TaskPageInner() {
     );
     
     try {
+      const formData = new FormData();
+      formData.append('taskId', taskId);
+      formData.append('isFinished', (!currentStatus).toString());
+
       const response = await fetch('/api/task/update', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          taskId,
-          isFinished: !currentStatus,
-        }),
+        body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to update task');
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update task');
       }
 
       triggerTaskUpdate();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating task status:', error);
-      alert('อัพเดทสถานะไม่สำเร็จ');
+      alert('อัพเดทสถานะไม่สำเร็จ: ' + error.message);
       // Revert optimistic update
       setTasks(prevTasks =>
         prevTasks.map(task =>

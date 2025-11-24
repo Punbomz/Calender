@@ -12,7 +12,6 @@ import {
   Download,
   ExternalLink
 } from "lucide-react";
-import { auth } from '@/lib/firebaseClient';
 
 interface Task {
   id: string;
@@ -48,7 +47,6 @@ export default function EditTaskModal({
   const [isSaving, setIsSaving] = useState(false);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<string[]>([]);
-  const [deletingFile, setDeletingFile] = useState<string | null>(null);
   const [filesToRemove, setFilesToRemove] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -203,34 +201,29 @@ export default function EditTaskModal({
       formData.append("taskId", editedTask.id);
       formData.append("taskName", editedTask.title.trim());
       formData.append("description", editedTask.description.trim());
-      formData.append("priorityLevel", editedTask.priority);
+      formData.append("priorityLevel", editedTask.priority.toString());
       formData.append("category", editedTask.category);
-      formData.append("deadLine", editedTask.deadline);
+      formData.append("deadLine", new Date(editedTask.deadline).toISOString());
+      
+      // Add isFinished if it exists
+      if (editedTask.isFinished !== undefined) {
+        formData.append("isFinished", editedTask.isFinished.toString());
+      }
 
+      console.log("Sending form data:");
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value);
+      }
+
+      // Add new files to FormData
       newFiles.forEach((file) => {
         formData.append("files", file);
       });
 
-      // Delete marked files first
-      if (filesToRemove.length > 0) {
-        const userId = auth.currentUser?.uid;
-        const deleteResponse = await fetch('/api/task/deleteAttachments', {
-          method: 'DELETE',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: userId,
-            taskId: editedTask.id,
-            fileUrls: filesToRemove,
-          }),
-        });
-
-        if (!deleteResponse.ok) {
-          throw new Error('Failed to delete attachments');
-        }
-      }
+      // Add files to delete to FormData
+      filesToRemove.forEach((fileUrl) => {
+        formData.append("deleteFiles", fileUrl);
+      });
 
       const response = await fetch('/api/task/update', {
         method: 'PATCH',
@@ -244,9 +237,10 @@ export default function EditTaskModal({
         throw new Error(data.error || 'Failed to update task');
       }
 
+      // Update task with returned data
       const updatedTaskFromServer = {
         ...editedTask,
-        attachments: data.task?.attachments ?? editedTask.attachments?.filter(url => !filesToRemove.includes(url)),
+        attachments: data.task?.attachments || [],
       };
 
       onSave(updatedTaskFromServer);
@@ -265,7 +259,7 @@ export default function EditTaskModal({
         {/* Close Button */}
         <button 
           onClick={onClose}
-          disabled={isSaving || deletingFile !== null}
+          disabled={isSaving}
           className="hover:cursor-pointer absolute top-4 right-4 text-white/70 hover:text-white p-2 hover:bg-white/10 rounded-full transition z-10"
         >
           <X size={24} />
@@ -292,7 +286,7 @@ export default function EditTaskModal({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Task Title */}
               <div className="space-y-1.5">
-                <label htmlFor="title" className="block text-sm font-medium text-white/90">
+                <label htmlFor="taskName" className="block text-sm font-medium text-white/90">
                   ชื่องาน <span className="text-red-400">*</span>
                 </label>
                 <div className="relative group">
@@ -301,7 +295,7 @@ export default function EditTaskModal({
                   </div>
                   <input
                     type="text"
-                    id="title"
+                    id="taskName"
                     name="title"
                     value={editedTask.title}
                     onChange={handleInputChange}
@@ -459,27 +453,15 @@ export default function EditTaskModal({
                         </div>
                         <div className="flex gap-2">
                           {!isMarkedForRemoval && (
-                            <>
-                              {isImage && (
-                                <a
-                                  href={fileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-                                  title="ดูรูปภาพ"
-                                >
-                                  <ExternalLink size={18} />
-                                </a>
-                              )}
-                              <a
-                                href={fileUrl}
-                                download
-                                className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
-                                title="ดาวน์โหลด"
-                              >
-                                <Download size={18} />
-                              </a>
-                            </>
+                            <a
+                              href={fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                              title="ดูรูปภาพ"
+                            >
+                              <ExternalLink size={18} />
+                            </a>
                           )}
                           <button
                             type="button"
@@ -577,14 +559,14 @@ export default function EditTaskModal({
               <button
                 type="button"
                 onClick={onClose}
-                disabled={isSaving || deletingFile !== null}
+                disabled={isSaving}
                 className="hover:cursor-pointer px-6 py-3 text-white/80 hover:text-white font-medium rounded-xl transition hover:bg-white/10"
               >
                 ยกเลิก
               </button>
               <button
                 type="submit"
-                disabled={isSaving || deletingFile !== null}
+                disabled={isSaving}
                 className="hover:cursor-pointer px-8 py-3 bg-white text-[#593831] hover:bg-white/90 font-medium rounded-xl transition shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isSaving ? (

@@ -35,19 +35,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // ✅ Get all user tasks to count classroom tasks
-    const tasksSnapshot = await adminDb
-      .collection("users")
-      .doc(userId)
-      .collection("tasks")
-      .get();
-
-    const allTasks = tasksSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    // ✅ Fetch classroom details and count tasks
+    // ✅ Fetch classroom details and count tasks created BY TEACHER
     const classroomPromises = userClassesSnapshot.docs.map(async (classDoc) => {
       const classroomID = classDoc.id;
       
@@ -64,15 +52,42 @@ export async function GET(req: NextRequest) {
 
         const classData = classSnapshot.data();
         
-        // Count tasks for this classroom
-        const taskCount = allTasks.filter(
-          (task: any) => task.classroom === classroomID
-        ).length;
+        // ✅ Check if current user is the teacher (createdBy field)
+        const isTeacher = classData?.teacher === userId;
+        
+        let taskCount = 0;
+        
+        if (isTeacher) {
+          // ✅ For teachers: Count tasks IN THE CLASSROOM collection
+          // Tasks created by teacher are stored in classrooms/{classroomId}/tasks
+          const classroomTasksSnapshot = await adminDb
+            .collection("classrooms")
+            .doc(classroomID)
+            .collection("tasks")
+            .get();
+          
+          taskCount = classroomTasksSnapshot.size;
+          
+          console.log(`📚 Teacher ${userId} has ${taskCount} tasks in classroom ${classroomID}`);
+        } else {
+          // ✅ For students: Count tasks in their personal tasks that reference this classroom
+          const userTasksSnapshot = await adminDb
+            .collection("users")
+            .doc(userId)
+            .collection("tasks")
+            .where("classroom", "==", classroomID)
+            .get();
+          
+          taskCount = userTasksSnapshot.size;
+          
+          console.log(`👨‍🎓 Student ${userId} has ${taskCount} tasks from classroom ${classroomID}`);
+        }
 
         return {
           classroomID,
           name: classData?.name || classroomID,
           taskCount,
+          isTeacher, // ✅ Add this field so frontend knows
         };
       } catch (error) {
         console.error(`Error fetching classroom ${classroomID}:`, error);
