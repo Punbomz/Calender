@@ -323,6 +323,7 @@ export default function InfoClassroomPage() {
           onTaskUpdated={handleTaskUpdated}
           onTaskDeleted={handleTaskDeleted}
           userRole={userRole}
+          classroomName={classroom.name}
         />
       )}
     </div>

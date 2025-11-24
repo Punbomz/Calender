@@ -22,7 +22,8 @@ interface TaskDetailsModalProps {
   onClose: () => void;
   onTaskUpdated?: () => void;
   onTaskDeleted?: () => void;
-  userRole?: string; // Add userRole prop
+  userRole?: string;
+  classroomName?: string;
 }
 
 interface TaskData {
@@ -41,7 +42,8 @@ export default function ClassroomTaskDetailsModal({
   onClose,
   onTaskUpdated,
   onTaskDeleted,
-  userRole = "student", // Default to student if not provided
+  userRole = "student",
+  classroomName = "",
 }: TaskDetailsModalProps) {
   const [taskData, setTaskData] = useState<TaskData | null>(null);
   const [editedData, setEditedData] = useState<TaskData | null>(null);
@@ -53,6 +55,8 @@ export default function ClassroomTaskDetailsModal({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<string[]>([]);
   const [filesToRemove, setFilesToRemove] = useState<string[]>([]);
+
+  const isTeacher = userRole === "teacher";
 
   useEffect(() => {
     const fetchTaskDetails = async () => {
@@ -140,7 +144,6 @@ export default function ClassroomTaskDetailsModal({
   ) => {
     const { name, value } = e.target;
     
-    // Special handling for deadline to convert to ISO format
     if (name === "deadLine") {
       const isoDate = new Date(value).toISOString();
       setEditedData((prev) => prev ? ({
@@ -223,12 +226,10 @@ export default function ClassroomTaskDetailsModal({
       formData.append("deadLine", editedData.deadLine);
       formData.append("category", editedData.category);
 
-      // Add new files
       selectedFiles.forEach((file) => {
         formData.append("files", file);
       });
 
-      // Add files to remove
       formData.append("filesToRemove", JSON.stringify(filesToRemove));
 
       const response = await fetch("/api/classroom/task/update", {
@@ -243,7 +244,6 @@ export default function ClassroomTaskDetailsModal({
         throw new Error(data.error || "Failed to update task");
       }
 
-      // Refresh task data
       const refreshResponse = await fetch(`/api/classroom/task/details?classroomId=${classroomId}&taskId=${taskId}`);
       const refreshData = await refreshResponse.json();
       setTaskData(refreshData.task);
@@ -304,34 +304,34 @@ export default function ClassroomTaskDetailsModal({
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-all">
       <div className="bg-[#593831] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden relative animate-in fade-in zoom-in duration-200 border-2 border-[#5A3E2F] max-h-[90vh] overflow-y-auto">
         
-        {/* Close Button */}
         <button 
           onClick={onClose}
           disabled={saving || deleting}
-          className="hover: cursor-pointer absolute top-4 right-4 text-white/70 hover:text-white p-2 hover:bg-white/10 rounded-full transition z-10"
+          className="hover:cursor-pointer absolute top-4 right-4 text-white/70 hover:text-white p-2 hover:bg-white/10 rounded-full transition z-10"
         >
           <X size={24} />
         </button>
 
         <div className="p-8">
-          {/* Header */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-white">
               {isEditing ? "แก้ไขงาน" : "รายละเอียดงาน"}
             </h2>
-            <p className="text-sm text-white/70 mt-1">
-              {isEditing ? "แก้ไขข้อมูลงานที่มอบหมาย" : "ข้อมูลงานที่มอบหมาย"}
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <BookOpen size={16} className="text-white/70" />
+              <p className="text-sm text-white/70">
+                {isEditing ? "แก้ไขข้อมูลงานที่มอบหมาย" : `ห้องเรียน: `}
+                {!isEditing && <span className="font-medium text-white/90">{classroomName || "Loading..."}</span>}
+              </p>
+            </div>
           </div>
 
-          {/* Loading State */}
           {loading && (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-4 border-white/20 border-t-white"></div>
             </div>
           )}
 
-          {/* Error State */}
           {error && (
             <div className="p-4 bg-red-900/40 border-l-4 border-red-500 text-red-200 rounded-r-lg text-sm flex items-center gap-3 mb-4">
               <AlertCircle size={20} className="shrink-0" />
@@ -339,11 +339,9 @@ export default function ClassroomTaskDetailsModal({
             </div>
           )}
 
-          {/* Task Details */}
           {!loading && editedData && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Task Title */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-white/90 flex items-center gap-2">
                     <Type size={18} />
@@ -366,7 +364,6 @@ export default function ClassroomTaskDetailsModal({
                   )}
                 </div>
 
-                {/* Deadline */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-white/90 flex items-center gap-2">
                     <Calendar size={18} />
@@ -389,7 +386,6 @@ export default function ClassroomTaskDetailsModal({
                 </div>
               </div>
 
-              {/* Category */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-white/90 flex items-center gap-2">
                   <BookOpen size={18} />
@@ -404,11 +400,11 @@ export default function ClassroomTaskDetailsModal({
                       className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/30 appearance-none text-white cursor-pointer"
                       disabled={saving}
                     >
-                      <option value="Homework" className="bg-[#6B4E3D]">Homework (การบ้าน)</option>
-                      <option value="Lab" className="bg-[#6B4E3D]">Lab (ปฏิบัติการ)</option>
-                      <option value="Project" className="bg-[#6B4E3D]">Project (โครงงาน)</option>
-                      <option value="Quiz" className="bg-[#6B4E3D]">Quiz (สอบย่อย)</option>
-                      <option value="Exam" className="bg-[#6B4E3D]">Exam (สอบ)</option>
+                      <option value="Homework" className="bg-[#593831]">Homework (การบ้าน)</option>
+                      <option value="Lab" className="bg-[#593831]">Lab (ปฏิบัติการ)</option>
+                      <option value="Project" className="bg-[#593831]">Project (โครงงาน)</option>
+                      <option value="Quiz" className="bg-[#593831]">Quiz (สอบย่อย)</option>
+                      <option value="Exam" className="bg-[#593831]">Exam (สอบ)</option>
                     </select>
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                       <ChevronDown className="text-white/50" size={20} />
@@ -426,7 +422,6 @@ export default function ClassroomTaskDetailsModal({
                 )}
               </div>
 
-              {/* Description */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-white/90 flex items-center gap-2">
                   <AlignLeft size={18} />
@@ -449,7 +444,6 @@ export default function ClassroomTaskDetailsModal({
                 )}
               </div>
 
-              {/* Existing Files */}
               {editedData.files && editedData.files.length > 0 && (
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-white/90">
@@ -531,7 +525,6 @@ export default function ClassroomTaskDetailsModal({
                 </div>
               )}
 
-              {/* New Files Upload (Edit Mode) */}
               {isEditing && (
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-white/90">
@@ -599,7 +592,6 @@ export default function ClassroomTaskDetailsModal({
                 </div>
               )}
 
-              {/* Created Date */}
               {!isEditing && taskData && (
                 <div className="pt-4 border-t border-white/20">
                   <p className="text-sm text-white/60">
@@ -610,11 +602,10 @@ export default function ClassroomTaskDetailsModal({
             </div>
           )}
 
-          {/* Action Buttons - Always show when not loading */}
           {!loading && (
             <div className="pt-6 flex items-center justify-between border-t border-white/20 mt-6">
               <div>
-                {!isEditing && editedData && (
+                {!isEditing && editedData && isTeacher && (
                   <button
                     onClick={handleDelete}
                     disabled={deleting}
@@ -650,11 +641,11 @@ export default function ClassroomTaskDetailsModal({
                         <button
                           onClick={handleSave}
                           disabled={saving}
-                          className="hover:cursor-pointer px-8 py-3 bg-white text-[#6B4E3D] hover:bg-white/90 font-medium rounded-xl transition shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+                          className="hover:cursor-pointer px-8 py-3 bg-white text-[#593831] hover:bg-white/90 font-medium rounded-xl transition shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                           {saving ? (
                             <>
-                              <span className="animate-spin rounded-full h-4 w-4 border-2 border-[#6B4E3D] border-t-transparent"></span>
+                              <span className="animate-spin rounded-full h-4 w-4 border-2 border-[#593831] border-t-transparent"></span>
                               กำลังบันทึก...
                             </>
                           ) : (
@@ -667,16 +658,18 @@ export default function ClassroomTaskDetailsModal({
                       </>
                     ) : (
                       <>
-                        <button
-                          onClick={handleEdit}
-                          className="hover:cursor-pointer px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition shadow-lg flex items-center gap-2"
-                        >
-                          <Edit2 size={18} />
-                          แก้ไข
-                        </button>
+                        {isTeacher && (
+                          <button
+                            onClick={handleEdit}
+                            className="hover:cursor-pointer px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition shadow-lg flex items-center gap-2"
+                          >
+                            <Edit2 size={18} />
+                            แก้ไข
+                          </button>
+                        )}
                         <button
                           onClick={onClose}
-                          className="hover:cursor-pointer px-8 py-3 bg-white text-[#6B4E3D] hover:bg-white/90 font-medium rounded-xl transition shadow-lg"
+                          className="hover:cursor-pointer px-8 py-3 bg-white text-[#593831] hover:bg-white/90 font-medium rounded-xl transition shadow-lg"
                         >
                           ปิด
                         </button>
@@ -685,11 +678,10 @@ export default function ClassroomTaskDetailsModal({
                   </>
                 )}
                 
-                {/* Fallback close button if no data */}
                 {!editedData && (
                   <button
                     onClick={onClose}
-                    className="hover:cursor-pointer px-8 py-3 bg-white text-[#6B4E3D] hover:bg-white/90 font-medium rounded-xl transition shadow-lg"
+                    className="hover:cursor-pointer px-8 py-3 bg-white text-[#593831] hover:bg-white/90 font-medium rounded-xl transition shadow-lg"
                   >
                     ปิด
                   </button>
