@@ -302,13 +302,13 @@ export default function ClassroomTaskDetailsModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-all">
-      <div className="bg-[#6B4E3D] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden relative animate-in fade-in zoom-in duration-200 border-2 border-[#5A3E2F] max-h-[90vh] overflow-y-auto">
+      <div className="bg-[#593831] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden relative animate-in fade-in zoom-in duration-200 border-2 border-[#5A3E2F] max-h-[90vh] overflow-y-auto">
         
         {/* Close Button */}
         <button 
           onClick={onClose}
           disabled={saving || deleting}
-          className="absolute top-4 right-4 text-white/70 hover:text-white p-2 hover:bg-white/10 rounded-full transition z-10"
+          className="hover: cursor-pointer absolute top-4 right-4 text-white/70 hover:text-white p-2 hover:bg-white/10 rounded-full transition z-10"
         >
           <X size={24} />
         </button>
@@ -508,7 +508,7 @@ export default function ClassroomTaskDetailsModal({
                               <button
                                 type="button"
                                 onClick={() => isMarkedForRemoval ? handleRestoreFile(fileUrl) : handleRemoveExistingFile(fileUrl)}
-                                className={`p-2 text-white rounded-lg transition-colors ${
+                                className={`hover:cursor-pointer p-2 text-white rounded-lg transition-colors ${
                                   isMarkedForRemoval
                                     ? 'bg-green-500 hover:bg-green-600'
                                     : 'bg-red-500 hover:bg-red-600'
@@ -581,7 +581,7 @@ export default function ClassroomTaskDetailsModal({
                               <button
                                 type="button"
                                 onClick={() => handleRemoveNewFile(index)}
-                                className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                className="hover:cursor-pointer absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                                 title="ลบไฟล์"
                               >
                                 <X size={16} />
@@ -618,7 +618,7 @@ export default function ClassroomTaskDetailsModal({
                   <button
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl transition shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="hover:cursor-pointer px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl transition shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {deleting ? (
                       <>
@@ -643,14 +643,14 @@ export default function ClassroomTaskDetailsModal({
                         <button
                           onClick={handleCancelEdit}
                           disabled={saving}
-                          className="px-6 py-3 text-white/80 hover:text-white font-medium rounded-xl transition hover:bg-white/10"
+                          className="hover:cursor-pointer px-6 py-3 text-white/80 hover:text-white font-medium rounded-xl transition hover:bg-white/10"
                         >
                           ยกเลิก
                         </button>
                         <button
                           onClick={handleSave}
                           disabled={saving}
-                          className="px-8 py-3 bg-white text-[#6B4E3D] hover:bg-white/90 font-medium rounded-xl transition shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+                          className="hover:cursor-pointer px-8 py-3 bg-white text-[#6B4E3D] hover:bg-white/90 font-medium rounded-xl transition shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                           {saving ? (
                             <>
@@ -669,14 +669,14 @@ export default function ClassroomTaskDetailsModal({
                       <>
                         <button
                           onClick={handleEdit}
-                          className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition shadow-lg flex items-center gap-2"
+                          className="hover:cursor-pointer px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition shadow-lg flex items-center gap-2"
                         >
                           <Edit2 size={18} />
                           แก้ไข
                         </button>
                         <button
                           onClick={onClose}
-                          className="px-8 py-3 bg-white text-[#6B4E3D] hover:bg-white/90 font-medium rounded-xl transition shadow-lg"
+                          className="hover:cursor-pointer px-8 py-3 bg-white text-[#6B4E3D] hover:bg-white/90 font-medium rounded-xl transition shadow-lg"
                         >
                           ปิด
                         </button>
@@ -689,7 +689,7 @@ export default function ClassroomTaskDetailsModal({
                 {!editedData && (
                   <button
                     onClick={onClose}
-                    className="px-8 py-3 bg-white text-[#6B4E3D] hover:bg-white/90 font-medium rounded-xl transition shadow-lg"
+                    className="hover:cursor-pointer px-8 py-3 bg-white text-[#6B4E3D] hover:bg-white/90 font-medium rounded-xl transition shadow-lg"
                   >
                     ปิด
                   </button>

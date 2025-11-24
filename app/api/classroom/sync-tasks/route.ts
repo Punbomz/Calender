@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
           classroomsDeleted: 0,
           tasksDeleted: 0,
           tasksAdded: 0,
+          tasksUpdated: 0,
           notifications: 0,
         },
       });
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
     let classroomsDeleted = 0;
     let tasksDeleted = 0;
     let tasksAdded = 0;
+    let tasksUpdated = 0;
     let notifications = 0;
 
     // ========== STEP 1: Check if classrooms still exist ==========
@@ -106,8 +108,8 @@ export async function POST(request: NextRequest) {
       console.log(`✅ [SYNC ${syncId}] Updated user's classroom list (removed ${classroomsDeleted} classrooms)`);
     }
 
-    // ========== STEP 2 & 3: Sync tasks for valid classrooms ==========
-    console.log(`\n📋 [SYNC ${syncId}] STEP 2 & 3: Syncing tasks for ${validClassrooms.length} classrooms...`);
+    // ========== STEP 2, 3 & 4: Sync tasks for valid classrooms ==========
+    console.log(`\n📋 [SYNC ${syncId}] STEP 2, 3 & 4: Syncing tasks for ${validClassrooms.length} classrooms...`);
     
     for (const classroomId of validClassrooms) {
       console.log(`\n  🏫 [SYNC ${syncId}] Processing classroom: ${classroomId}`);
@@ -184,13 +186,18 @@ export async function POST(request: NextRequest) {
       // STEP 3: Add new tasks that student doesn't have yet
       console.log(`\n     ➕ Checking for new tasks to add...`);
       let addedInClassroom = 0;
+      
+      // STEP 4: Update existing tasks with changes
+      console.log(`\n     🔄 Checking for tasks to update...`);
+      let updatedInClassroom = 0;
+      
       for (const [classroomTaskId, classroomTask] of classroomTasksMap) {
         if (!studentTaskMap.has(classroomTaskId)) {
+          // NEW TASK - Add it
           console.log(`        ➕ NEW TASK FOUND: ${classroomTask.taskName}`);
           console.log(`           Task ID: ${classroomTaskId}`);
           console.log(`           Deadline: ${classroomTask.deadLine}`);
           
-          // Add task to student's collection
           const newTaskData = {
             taskName: classroomTask.taskName,
             description: classroomTask.description || "",
@@ -210,6 +217,63 @@ export async function POST(request: NextRequest) {
           tasksAdded++;
           notifications++;
           addedInClassroom++;
+        } else {
+          // EXISTING TASK - Check for updates
+          const studentTask = studentTaskMap.get(classroomTaskId);
+          const changes: string[] = [];
+          const updateData: any = {};
+          
+          // Compare task name
+          if (classroomTask.taskName !== studentTask.taskName) {
+            changes.push(`name: "${studentTask.taskName}" → "${classroomTask.taskName}"`);
+            updateData.taskName = classroomTask.taskName;
+          }
+          
+          // Compare description
+          const classroomDesc = classroomTask.description || "";
+          const studentDesc = studentTask.description || "";
+          if (classroomDesc !== studentDesc) {
+            changes.push(`description changed`);
+            updateData.description = classroomDesc;
+          }
+          
+          // Compare deadline
+          if (classroomTask.deadLine !== studentTask.deadLine) {
+            changes.push(`deadline: ${studentTask.deadLine} → ${classroomTask.deadLine}`);
+            updateData.deadLine = classroomTask.deadLine;
+          }
+          
+          // Compare category
+          const classroomCategory = classroomTask.category || "Homework";
+          const studentCategory = studentTask.category || "Homework";
+          if (classroomCategory !== studentCategory) {
+            changes.push(`category: ${studentCategory} → ${classroomCategory}`);
+            updateData.category = classroomCategory;
+          }
+          
+          // Compare files/attachments
+          const classroomFiles = JSON.stringify(classroomTask.files || []);
+          const studentFiles = JSON.stringify(studentTask.attachments || []);
+          if (classroomFiles !== studentFiles) {
+            const classroomFileCount = (classroomTask.files || []).length;
+            const studentFileCount = (studentTask.attachments || []).length;
+            changes.push(`files: ${studentFileCount} → ${classroomFileCount}`);
+            updateData.attachments = classroomTask.files || [];
+          }
+          
+          // If there are changes, update the student's task
+          if (changes.length > 0) {
+            console.log(`        🔄 UPDATING TASK: ${classroomTask.taskName}`);
+            console.log(`           Student Doc ID: ${studentTask.docId}`);
+            console.log(`           Changes detected:`);
+            changes.forEach(change => console.log(`              - ${change}`));
+            
+            await studentTasksRef.doc(studentTask.docId).update(updateData);
+            
+            tasksUpdated++;
+            updatedInClassroom++;
+            console.log(`           ✅ Task updated successfully`);
+          }
         }
       }
       
@@ -217,6 +281,12 @@ export async function POST(request: NextRequest) {
         console.log(`        ✅ No new tasks to add (student is up to date)`);
       } else {
         console.log(`        🎉 Added ${addedInClassroom} new tasks!`);
+      }
+      
+      if (updatedInClassroom === 0) {
+        console.log(`        ✅ No tasks need updating (all are current)`);
+      } else {
+        console.log(`        🔄 Updated ${updatedInClassroom} existing tasks!`);
       }
     }
 
@@ -226,6 +296,7 @@ export async function POST(request: NextRequest) {
     console.log(`      - Classrooms removed: ${classroomsDeleted}`);
     console.log(`      - Tasks deleted: ${tasksDeleted}`);
     console.log(`      - Tasks added: ${tasksAdded}`);
+    console.log(`      - Tasks updated: ${tasksUpdated}`);
     console.log(`      - Notifications: ${notifications}`);
     console.log(`${'='.repeat(80)}\n`);
 
@@ -236,6 +307,7 @@ export async function POST(request: NextRequest) {
         classroomsDeleted,
         tasksDeleted,
         tasksAdded,
+        tasksUpdated,
         notifications,
       },
     });
