@@ -9,7 +9,6 @@ export default function ClassroomSyncManager() {
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStats, setSyncStats] = useState<any>(null);
-  const [showDebug, setShowDebug] = useState(true);
 
   const syncClassroomTasks = async () => {
     try {
@@ -117,9 +116,8 @@ export default function ClassroomSyncManager() {
     console.log("🔄 [CLIENT] Running initial sync...");
     syncClassroomTasks();
 
-    // Set up periodic sync every 30 seconds (for testing)
-    // Change to 300000 (5 minutes) for production
-    const intervalMs = 30000;
+    // Set up periodic sync every 5 minutes (300000ms)
+    const intervalMs = 300000; // 5 minutes for production
     console.log(`⏰ [CLIENT] Setting up sync interval: ${intervalMs}ms (${intervalMs/1000} seconds)`);
     
     syncIntervalRef.current = setInterval(() => {
@@ -137,114 +135,6 @@ export default function ClassroomSyncManager() {
     };
   }, []);
 
-  // Always show debug panel
-  // return (
-  //   <div 
-  //     style={{
-  //       position: 'fixed',
-  //       bottom: '20px',
-  //       right: '20px',
-  //       background: 'rgba(0, 0, 0, 0.9)',
-  //       color: 'white',
-  //       padding: '16px',
-  //       borderRadius: '8px',
-  //       fontSize: '12px',
-  //       zIndex: 9999,
-  //       maxWidth: '320px',
-  //       boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-  //       fontFamily: 'monospace',
-  //     }}
-  //   >
-  //     <div style={{ 
-  //       display: 'flex', 
-  //       justifyContent: 'space-between', 
-  //       alignItems: 'center',
-  //       marginBottom: '12px' 
-  //     }}>
-  //       <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
-  //         🔄 Classroom Sync
-  //       </div>
-  //       <button
-  //         onClick={() => setShowDebug(!showDebug)}
-  //         style={{
-  //           background: 'transparent',
-  //           border: '1px solid #666',
-  //           color: 'white',
-  //           padding: '2px 8px',
-  //           borderRadius: '4px',
-  //           cursor: 'pointer',
-  //           fontSize: '10px',
-  //         }}
-  //       >
-  //         {showDebug ? 'Hide' : 'Show'}
-  //       </button>
-  //     </div>
-      
-  //     {showDebug && (
-  //       <>
-  //         {lastSync && (
-  //           <div style={{ marginBottom: '8px', color: '#aaa' }}>
-  //             Last sync: {lastSync.toLocaleTimeString()}
-  //           </div>
-  //         )}
-          
-  //         {syncStats && !syncStats.error && (
-  //           <div style={{ 
-  //             marginBottom: '12px', 
-  //             fontSize: '11px',
-  //             background: 'rgba(255,255,255,0.1)',
-  //             padding: '8px',
-  //             borderRadius: '4px'
-  //           }}>
-  //             <div style={{ color: '#4CAF50' }}>✅ Added: {syncStats.tasksAdded}</div>
-  //             <div style={{ color: '#ff9800' }}>🗑️ Deleted: {syncStats.tasksDeleted}</div>
-  //             <div style={{ color: '#2196F3' }}>🔔 New: {syncStats.notifications}</div>
-  //             <div style={{ color: '#f44336' }}>❌ Classrooms: {syncStats.classroomsDeleted}</div>
-  //           </div>
-  //         )}
-          
-  //         {syncStats?.error && (
-  //           <div style={{ 
-  //             marginBottom: '12px', 
-  //             fontSize: '11px',
-  //             background: 'rgba(244, 67, 54, 0.2)',
-  //             padding: '8px',
-  //             borderRadius: '4px',
-  //             color: '#ff5252'
-  //           }}>
-  //             Error: {syncStats.error}
-  //           </div>
-  //         )}
-  //       </>
-  //     )}
-      
-  //     <button
-  //       onClick={syncClassroomTasks}
-  //       disabled={isSyncing}
-  //       style={{
-  //         background: isSyncing ? '#666' : '#4CAF50',
-  //         color: 'white',
-  //         border: 'none',
-  //         padding: '8px 16px',
-  //         borderRadius: '4px',
-  //         cursor: isSyncing ? 'not-allowed' : 'pointer',
-  //         fontSize: '12px',
-  //         width: '100%',
-  //         fontWeight: 'bold',
-  //         transition: 'background 0.2s',
-  //       }}
-  //     >
-  //       {isSyncing ? '⏳ Syncing...' : '🔄 Sync Now'}
-  //     </button>
-      
-  //     <div style={{ 
-  //       marginTop: '8px', 
-  //       fontSize: '10px', 
-  //       color: '#888',
-  //       textAlign: 'center' 
-  //     }}>
-  //       Auto-sync every 30 seconds
-  //     </div>
-  //   </div>
-  // );
+  // Return null - this component doesn't render anything visible
+  return null;
 }
