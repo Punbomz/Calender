@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
             description: classroomTask.description || "",
             deadLine: classroomTask.deadLine,
             category: classroomTask.category || "Homework",
-            priorityLevel: 1,
+            priorityLevel: 3,
             classroom: classroomId,
             classroomTaskId: classroomTaskId,
             isFinished: false,
