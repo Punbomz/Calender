@@ -374,6 +374,7 @@ export default function ClassroomTaskDetailsModal({
                       type="datetime-local"
                       name="deadLine"
                       value={formatDateTimeForInput(editedData.deadLine)}
+                      min={new Date().toISOString().slice(0,16)}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/30 text-white [color-scheme:dark]"
                       disabled={saving}
@@ -488,14 +489,6 @@ export default function ClassroomTaskDetailsModal({
                                     <ExternalLink size={18} />
                                   </a>
                                 )}
-                                <a
-                                  href={fileUrl}
-                                  download
-                                  className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
-                                  title="ดาวน์โหลด"
-                                >
-                                  <Download size={18} />
-                                </a>
                               </>
                             )}
                             {isEditing && (

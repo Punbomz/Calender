@@ -307,14 +307,6 @@ export default function TaskDetailsModal({
                                 <ExternalLink size={18} />
                               </a>
                             )}
-                            <a
-                              href={fileUrl}
-                              download
-                              className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
-                              title="ดาวน์โหลด"
-                            >
-                              <Download size={18} />
-                            </a>
                           </div>
                         </div>
                       );

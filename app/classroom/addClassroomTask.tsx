@@ -209,6 +209,7 @@ export default function AddClassroomTaskModal({
                                 onChange={handleInputChange}
                                 className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40 text-sm transition-all placeholder:text-white/40 text-white [color-scheme:dark]"
                                 disabled={loading}
+                                min={new Date().toISOString().slice(0,16)}
                                 required
                             />
                         </div>
