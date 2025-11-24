@@ -1,7 +1,7 @@
 // app/classroom/info/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import AddClassroomTaskModal from "@/app/classroom/addClassroomTask";
 import ClassroomTaskDetailsModal from "@/app/components/taskDetailsModal";
@@ -18,7 +18,8 @@ interface Task {
   name: string;
 }
 
-export default function InfoClassroomPage() {
+// Separate component that uses useSearchParams
+function ClassroomInfoContent() {
   const searchParams = useSearchParams();
   const classroomIdFromUrl = searchParams.get("id");
   const router = useRouter();
@@ -224,7 +225,7 @@ export default function InfoClassroomPage() {
 
           <div className="mb-5">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl">📝</span>
+              <span className="text-2xl">📋</span>
               <h3 className="text-xl font-semibold underline">Task ({tasks.length})</h3>
             </div>
             <div className="mt-2 rounded-lg bg-white p-4 text-black">
@@ -327,5 +328,34 @@ export default function InfoClassroomPage() {
         />
       )}
     </div>
+  );
+}
+
+// Main component with Suspense wrapper
+export default function InfoClassroomPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen flex-col bg-gray-900">
+        <div className="bg-black px-4 py-3 text-xl font-bold text-white">
+          My Classroom
+        </div>
+        <div className="flex flex-1 items-start justify-center bg-gray-200 px-4 py-8">
+          <div className="w-full max-w-3xl rounded-2xl bg-[#5b3526] p-6 shadow-xl animate-pulse">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="w-10 h-10 bg-gray-400 rounded"></div>
+              <div className="h-9 bg-gray-400 rounded w-3/4"></div>
+            </div>
+            <div className="h-6 bg-gray-400 rounded w-1/2 mb-1"></div>
+            <div className="mt-3 mb-5 flex items-center gap-2">
+              <div className="h-6 bg-gray-400 rounded w-16"></div>
+              <div className="h-10 bg-white rounded-lg w-32"></div>
+            </div>
+            <div className="h-12 bg-gray-400 rounded-lg w-full"></div>
+          </div>
+        </div>
+      </div>
+    }>
+      <ClassroomInfoContent />
+    </Suspense>
   );
 }
