@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 
 import EditTaskModal from "../task/EditTask";
+import TaskDetailsModal from "../task/TaskDetailsModal";
+import { auth } from '@/lib/firebaseClient';
+import { on } from "events";
 
 // --- Types ---
 type Task = {
@@ -26,6 +29,7 @@ type Task = {
   isFinished?: boolean;
   deadLine: string;
   priorityLevel: number;
+  classroom?: string;
 };
 
 interface ModalTask {
@@ -45,445 +49,9 @@ type Settings = {
   categories?: Categories;
 };
 
-const priorityColors: Record<number, string> = {
-  3: "#ef4444", 2: "#f59e0b", 1: "#22c55e",
-};
-const defaultColor = "#888";
-
-const formatTaskDate = (isoString: string) => {
-  if (!isoString) return "";
-  const date = new Date(isoString);
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
-};
-
-const formatTaskTime = (isoString: string) => {
-  if (!isoString) return "";
-  const date = new Date(isoString);
-  return date.toLocaleTimeString("en-US", {
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-};
-
-// --- TaskMenuButton Component ---
-function TaskMenuButton({
-  task,
-  handleDeleteTask,
-  handleEditTask,
-}: {
-  task: Task;
-  handleDeleteTask: (taskId: string) => void;
-  handleEditTask: (task: Task) => void;
-}) {
-  const [showMenu, setShowMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMenu(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const confirmDelete = () => {
-    const confirmed = window.confirm(`ยืนยันที่จะลบงาน "${task.taskName}" หรือไม่?`);
-    if (confirmed) handleDeleteTask(task.id);
-  };
-
-  return (
-    <div className={`relative inline-block ${showMenu ? 'z-20' : 'z-auto'}`} ref={menuRef}>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setShowMenu((prev) => !prev);
-        }}
-        className="hover:cursor-pointer p-1.5 sm:p-2 rounded-md text-white hover:bg-white/20 transition"
-        aria-label={`Options for ${task.taskName}`}
-      >
-        <MoreHorizontal size={16} className="sm:w-[18px] sm:h-[18px]" />
-      </button>
-
-      {showMenu && (
-        <div
-          className="absolute right-0 mt-2 w-32 sm:w-36 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={() => {
-              setShowMenu(false);
-              handleEditTask(task);
-            }}
-            className="hover:cursor-pointer w-full flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm transition hover:bg-blue-50 hover:text-blue-600"
-          >
-            <Edit size={14} className="sm:w-4 sm:h-4" />
-            Edit
-          </button>
-          <button
-            onClick={() => {
-              setShowMenu(false);
-              confirmDelete();
-            }}
-            className="hover:cursor-pointer w-full flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm hover:bg-red-50 hover:text-red-600 transition"
-          >
-            <Trash2 size={14} className="sm:w-4 sm:h-4" />
-            Delete
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// --- CalendarMonth Component ---
-function CalendarMonth({
-  year,
-  month,
-  tasks,
-  weekStart = "Mon",
-  onDateClick,
-  selectedDate,
-  onToggleTask,
-  onDeleteTask,
-  onOpenEditModal,
-}: {
-  year: number;
-  month: number;
-  tasks: Task[];
-  categories: Categories;
-  weekStart?: "Mon" | "Sun";
-  onDateClick?: (date: Date) => void;
-  selectedDate?: Date | null;
-  onToggleTask: (taskId: string, currentStatus: boolean) => void;
-  onDeleteTask: (taskId: string) => void;
-  onOpenEditModal: (task: Task) => void;
-}) {
-  const [cursor, setCursor] = useState(new Date(year, month, 1));
-  function ymd(d: Date | null) { if (!d) return ""; return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
-  function startOfWeek(d: Date, weekStart: "Mon" | "Sun") { const day = d.getDay(); const diff = weekStart === "Mon" ? (day === 0 ? -6 : 1 - day) : -day; const nd = new Date(d); nd.setDate(d.getDate() + diff); nd.setHours(0, 0, 0, 0); return nd; }
-  function monthMatrix(year: number, month: number, weekStart: "Mon" | "Sun") { const first = new Date(year, month, 1); const firstCell = startOfWeek(first, weekStart); return Array.from({ length: 42 }, (_, i) => { const d = new Date(firstCell); d.setDate(firstCell.getDate() + i); return d; }); }
-  function dateInTask(date: Date, t: Task) { const taskDate = new Date(t.deadLine); const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()); const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999); return taskDate >= dayStart && taskDate <= dayEnd; }
-  function sameDay(a: Date, b: Date) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
-  const cells = monthMatrix(cursor.getFullYear(), cursor.getMonth(), weekStart);
-  const weekLabels = weekStart === "Mon" ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const nav = (d: number) => { const x = new Date(cursor); x.setMonth(x.getMonth() + d); setCursor(x); };
-  const today = new Date();
-  const selectedDayTasks = tasks.filter((t) => { if (t.isFinished || !selectedDate) return false; const taskDate = new Date(t.deadLine); return ymd(taskDate) === ymd(selectedDate); });
-
-  return (
-    <div className="w-full">
-      <div className="w-full bg-neutral-900 rounded-xl sm:rounded-2xl p-2 sm:p-4">
-        <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
-          <button onClick={() => nav(-1)} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
-            ‹
-          </button>
-          <h2 className="text-base sm:text-xl font-semibold text-white">
-            {cursor.toLocaleString("en-US", { month: "long", year: "numeric" })}
-          </h2>
-          <button onClick={() => nav(1)} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
-            ›
-          </button>
-        </div>
-        <div className="grid grid-cols-7 text-center text-xs sm:text-sm text-neutral-400 mb-2">
-          {weekLabels.map((w) => (
-            <div key={w} className="py-1 sm:py-2">
-              {w}
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-1 sm:gap-2">
-          {cells.map((date, i) => {
-            const isOther = date.getMonth() !== cursor.getMonth();
-            const isToday = sameDay(date, today);
-            const isSelected = selectedDate && sameDay(date, selectedDate);
-            const dayTasks = tasks.filter((t) => !t.isFinished && dateInTask(date, t));
-            const sortedDayTasks = dayTasks.sort((a, b) => b.priorityLevel - a.priorityLevel);
-            const dots = sortedDayTasks.slice(0, 3).map((t) => priorityColors[t.priorityLevel] || defaultColor);
-            return (
-              <div key={i} onClick={() => onDateClick && onDateClick(date)} className={`rounded-lg sm:rounded-xl p-1.5 sm:p-3 min-h-[60px] sm:min-h-[80px] cursor-pointer transition-all ${isOther ? "bg-neutral-800 opacity-40" : "bg-neutral-800 hover:bg-neutral-700"} ${isSelected ? "ring-2 ring-blue-500" : ""}`}>
-                <div className="flex items-center justify-between mb-1 sm:mb-2">
-                  <div className={`text-xs sm:text-sm ${isToday ? "bg-white text-black rounded-full w-5 h-5 sm:w-7 sm:h-7 flex items-center justify-center font-bold" : "text-white"}`}>
-                    {date.getDate()}
-                  </div>
-                </div>
-                <div className="flex gap-0.5 sm:gap-1 flex-wrap">
-                  {dots.map((c, idx) => (
-                    <span key={idx} className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ background: c }} />
-                  ))}
-                  {dayTasks.length > 3 && (
-                    <span className="text-[10px] sm:text-xs text-neutral-400">+{dayTasks.length - 3}</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-3 sm:p-6 mt-3 sm:mt-4">
-        <h5 className="text-xl sm:text-3xl font-bold mb-3 sm:mb-4 text-white">
-          Tasks for{" "}
-          {selectedDate ? selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric" }) : "Selected Day"}
-        </h5>
-        {selectedDayTasks.length === 0 ? (
-          <div className="text-neutral-400 text-center py-6 sm:py-8 text-sm sm:text-base">
-            {selectedDate ? "No unfinished tasks for this day" : "Click a date to see tasks"}
-          </div>
-        ) : (
-          <div className="space-y-3 sm:space-y-4">
-            {selectedDayTasks
-              .sort((a, b) => b.priorityLevel - a.priorityLevel)
-              .map((task) => (
-                <div key={task.id} className="rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-md" style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}>
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="flex-shrink-0 mt-1">
-                      <button onClick={(e) => { e.stopPropagation(); onToggleTask(task.id, task.isFinished || false); }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
-                        {task.isFinished && (
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <h3 className={`text-base sm:text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
-                        {task.taskName}
-                      </h3>
-                      <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm">
-                        <Calendar size={14} className="hidden sm:inline sm:w-4 sm:h-4" />
-                        <p className="hidden sm:inline">{formatTaskDate(task.deadLine)}</p>
-                        <Clock size={14} className="sm:w-4 sm:h-4" />
-                        <span className="font-semibold">{formatTaskTime(task.deadLine)}</span>
-                        <TaskMenuButton
-                          task={task}
-                          handleDeleteTask={onDeleteTask}
-                          handleEditTask={onOpenEditModal}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// --- Week View Component ---
-function WeekView({
-  selectedDate,
-  onDateChange,
-  tasks,
-  onSelectDay,
-  onToggleTask,
-  onDeleteTask,
-  onOpenEditModal,
-}: {
-  selectedDate: Date;
-  onDateChange: (date: Date) => void;
-  tasks: Task[];
-  categories: Categories;
-  onSelectDay: (date: Date) => void;
-  onToggleTask: (taskId: string, currentStatus: boolean) => void;
-  onDeleteTask: (taskId: string) => void;
-  onOpenEditModal: (task: Task) => void;
-}) {
-  const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  const [selectedDay, setSelectedDay] = useState<string>(ymd(selectedDate));
-  useEffect(() => { setSelectedDay(ymd(selectedDate)); }, [selectedDate]);
-  const getMonday = (d: Date) => { const day = d.getDay(); const diff = day === 0 ? -6 : 1 - day; const monday = new Date(d); monday.setDate(d.getDate() + diff); return monday; };
-  const monday = getMonday(selectedDate);
-  const goToNextWeek = () => { const nextWeek = new Date(selectedDate); nextWeek.setDate(selectedDate.getDate() + 7); onDateChange(nextWeek); };
-  const goToPrevWeek = () => { const prevWeek = new Date(selectedDate); prevWeek.setDate(selectedDate.getDate() - 7); onDateChange(prevWeek); };
-  const handleDayClick = (iso: string, date: Date) => { setSelectedDay(iso); onSelectDay(date); };
-  const renderWeek = () => {
-    const week = [];
-    const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    for (let i = 0; i < 7; i++) {
-      const current = new Date(monday);
-      current.setDate(monday.getDate() + i);
-      const iso = ymd(current);
-      const dayTasks = tasks.filter((t) => { if (t.isFinished) return false; const taskDate = new Date(t.deadLine); return ymd(taskDate) === iso; });
-      const isSelected = selectedDay === iso;
-      const isToday = ymd(new Date()) === iso;
-      week.push(
-        <div key={iso} className={`relative rounded-lg sm:rounded-xl p-2 sm:p-4 cursor-pointer transition-all min-h-[80px] sm:min-h-[100px] ${isSelected ? "bg-blue-600 ring-2 ring-blue-400" : "bg-neutral-800 hover:bg-neutral-700"} ${isToday ? "ring-2 ring-white" : ""}`} onClick={() => handleDayClick(iso, current)}>
-          <div className="flex flex-col items-center mb-2 sm:mb-3">
-            <strong className="text-neutral-400 text-[10px] sm:text-xs">{weekdays[i]}</strong>
-            <div className={`text-sm sm:text-lg font-semibold mt-1 ${isToday && !isSelected ? "bg-white text-black rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center" : "text-white"}`}>
-              {current.getDate()}
-            </div>
-          </div>
-          {dayTasks.length > 0 && (
-            <div className="flex gap-0.5 sm:gap-1 justify-center flex-wrap">
-              {dayTasks.sort((a, b) => b.priorityLevel - a.priorityLevel).slice(0, 3).map((task, idx) => (
-                <div key={idx} className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ background: priorityColors[task.priorityLevel] || defaultColor }} />
-              ))}
-              {dayTasks.length > 3 && <span className="text-[10px] sm:text-xs text-neutral-400">+{dayTasks.length - 3}</span>}
-            </div>
-          )}
-        </div>,
-      );
-    }
-    return week;
-  };
-  const selectedDayTasks = tasks.filter((t) => { if (t.isFinished) return false; const taskDate = new Date(t.deadLine); return ymd(taskDate) === selectedDay; });
-
-  return (
-    <div className="w-full">
-      <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-2 sm:p-4 mb-3 sm:mb-4">
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <button onClick={goToPrevWeek} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
-            ‹
-          </button>
-          <h2 className="text-base sm:text-xl font-semibold text-white">
-            {monday.toLocaleString("default", { month: "long" })} {monday.getFullYear()}
-          </h2>
-          <button onClick={goToNextWeek} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
-            ›
-          </button>
-        </div>
-        <div className="grid grid-cols-7 gap-1 sm:gap-2">{renderWeek()}</div>
-      </div>
-
-      <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-3 sm:p-6">
-        <h5 className="text-xl sm:text-3xl font-bold mb-3 sm:mb-4 text-white">Tasks</h5>
-        {selectedDayTasks.length === 0 ? (
-          <div className="text-neutral-400 text-center py-6 sm:py-8 text-sm sm:text-base">No unfinished tasks for this day</div>
-        ) : (
-          <div className="space-y-3 sm:space-y-4">
-            {selectedDayTasks
-              .sort((a, b) => b.priorityLevel - a.priorityLevel)
-              .map((task) => (
-                <div key={task.id} className="rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-md" style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}>
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="flex-shrink-0 mt-1">
-                      <button onClick={(e) => { e.stopPropagation(); onToggleTask(task.id, task.isFinished || false); }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
-                        {task.isFinished && (
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <h3 className={`text-base sm:text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
-                        {task.taskName}
-                      </h3>
-                      <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm">
-                        <Calendar size={14} className="hidden sm:inline sm:w-4 sm:h-4" />
-                        <p className="hidden sm:inline">{formatTaskDate(task.deadLine)}</p>
-                        <Clock size={14} className="sm:w-4 sm:h-4" />
-                        <span className="font-semibold">{formatTaskTime(task.deadLine)}</span>
-                        <TaskMenuButton
-                          task={task}
-                          handleDeleteTask={onDeleteTask}
-                          handleEditTask={onOpenEditModal}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// --- Day View Component ---
-function DayView({
-  selectedDate,
-  tasks,
-  onDateChange,
-  onToggleTask,
-  onDeleteTask,
-  onOpenEditModal,
-}: {
-  selectedDate: Date;
-  tasks: Task[];
-  categories: Categories;
-  onDateChange: (date: Date) => void;
-  onToggleTask: (taskId: string, currentStatus: boolean) => void;
-  onDeleteTask: (taskId: string) => void;
-  onOpenEditModal: (task: Task) => void;
-}) {
-  const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  const goToNextDay = () => { const nextDay = new Date(selectedDate); nextDay.setDate(selectedDate.getDate() + 1); onDateChange(nextDay); };
-  const goToPrevDay = () => { const prevDay = new Date(selectedDate); prevDay.setDate(selectedDate.getDate() - 1); onDateChange(prevDay); };
-  const dayTasks = tasks.filter((t) => { if (t.isFinished) return false; const taskDate = new Date(t.deadLine); return ymd(taskDate) === ymd(selectedDate); });
-
-  return (
-    <div className="w-full">
-      <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-2 sm:p-4 mb-3 sm:mb-4">
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <button onClick={goToPrevDay} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
-            ‹
-          </button>
-          <h2 className="text-sm sm:text-xl font-semibold text-white text-center">
-            {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-          </h2>
-          <button onClick={goToNextDay} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
-            ›
-          </button>
-        </div>
-      </div>
-
-      <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-3 sm:p-6">
-        <h5 className="text-xl sm:text-3xl font-bold mb-3 sm:mb-4 text-white">Tasks</h5>
-        {dayTasks.length === 0 ? (
-          <div className="text-neutral-400 text-center py-6 sm:py-8 text-sm sm:text-base">No unfinished tasks for this day</div>
-        ) : (
-          <div className="space-y-3 sm:space-y-4">
-            {dayTasks
-              .sort((a, b) => b.priorityLevel - a.priorityLevel)
-              .map((task) => (
-                <div key={task.id} className="rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-md" style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}>
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="flex-shrink-0 mt-1">
-                      <button onClick={(e) => { e.stopPropagation(); onToggleTask(task.id, task.isFinished || false); }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
-                        {task.isFinished && (
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <h3 className={`text-base sm:text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
-                        {task.taskName}
-                      </h3>
-                      <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm">
-                        <Calendar size={14} className="hidden sm:inline sm:w-4 sm:h-4" />
-                        <p className="hidden sm:inline">{formatTaskDate(task.deadLine)}</p>
-                        <Clock size={14} className="sm:w-4 sm:h-4" />
-                        <span className="font-semibold">{formatTaskTime(task.deadLine)}</span>
-                        <TaskMenuButton
-                          task={task}
-                          handleDeleteTask={onDeleteTask}
-                          handleEditTask={onOpenEditModal}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // --- Main App Component ---
 export default function CalendarApp() {
-  const [mainView, setMainView] = useState<"calendar" | "tasks" | "profile">("calendar");
+    const [mainView, setMainView] = useState<"calendar" | "tasks" | "profile">("calendar");
   const [calendarView, setCalendarView] = useState<"month" | "week" | "day">("month");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -495,6 +63,9 @@ export default function CalendarApp() {
       S: { color: "#ef4444" }, A: { color: "#f59e0b" }, B: { color: "#3b82f6" }, C: { color: "#22c55e" },
     },
   });
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingTask, setEditingTask] = useState<ModalTask | null>(null);
@@ -517,8 +88,21 @@ export default function CalendarApp() {
       const response = await fetch("/api/task/gettask?isFinished=false");
       if (!response.ok) throw new Error("Failed to fetch tasks");
       const data = await response.json();
-      if (data.success) setTasks(data.tasks);
-      else throw new Error(data.error || "Failed to load tasks");
+      console.log("📦 Received tasks:", data);
+      if (data.success) {
+        // Convert Firestore timestamp format to ISO strings
+        const convertedTasks = data.tasks.map((task: any) => ({
+          ...task,
+          deadLine: task.deadLine?._seconds 
+            ? new Date(task.deadLine._seconds * 1000).toISOString()
+            : new Date().toISOString(),
+          start: task.createdAt?._seconds
+            ? new Date(task.createdAt._seconds * 1000).toISOString()
+            : new Date().toISOString(),
+        }));
+        console.log("✅ Converted tasks:", convertedTasks);
+        setTasks(convertedTasks);
+      } else throw new Error(data.error || "Failed to load tasks");
     } catch (err: any) {
       console.error("Error loading tasks:", err);
       setError(err.message);
@@ -554,15 +138,19 @@ export default function CalendarApp() {
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    const originalTasks = [...tasks];
+  const originalTasks = [...tasks];
     setTasks(prev => prev.filter(t => t.id !== taskId));
+
     try {
+      const userId = auth.currentUser?.uid;
+
       const response = await fetch("/api/task/delete", { 
         method: "DELETE", 
         headers: { "Content-Type": "application/json" }, 
         credentials: "include", 
-        body: JSON.stringify({ taskId }) 
+        body: JSON.stringify({ taskId, userId }) 
       });
+
       if (!response.ok) throw new Error("Failed to delete task");
     } catch (err: any) {
       console.error("Error deleting task:", err);
@@ -582,6 +170,15 @@ export default function CalendarApp() {
       isFinished: task.isFinished || false,
     });
     setShowEditModal(true);
+  };
+
+  const handleTaskClick = (task: Task) => {
+    if (task.classroom) {
+      setSelectedTaskId(task.id);
+      setShowDetailsModal(true);
+    } else {
+      handleOpenEditModal(task);
+    }
   };
 
   const handleCloseEditModal = () => {
@@ -608,13 +205,534 @@ export default function CalendarApp() {
     handleCloseEditModal();
   };
 
+  const priorityColors: Record<number, string> = {
+    3: "#ef4444", 2: "#f59e0b", 1: "#22c55e",
+  };
+  const defaultColor = "#888";
+
+  const formatTaskDate = (isoString: string) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit", month: "short", year: "numeric",
+    });
+  };
+
+  const formatTaskTime = (isoString: string) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    });
+  };
+
+  // --- TaskMenuButton Component ---
+  function TaskMenuButton({
+    task,
+    handleDeleteTask,
+    handleEditTask,
+  }: {
+    task: Task;
+    handleDeleteTask: (taskId: string) => void;
+    handleEditTask: (task: Task) => void;
+  }) {
+    const [showMenu, setShowMenu] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      function handleClickOutside(event: MouseEvent) {
+        if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+          setShowMenu(false);
+        }
+      }
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const confirmDelete = () => {
+      const confirmed = window.confirm(`ยืนยันที่จะลบงาน "${task.taskName}" หรือไม่?`);
+      if (confirmed) handleDeleteTask(task.id);
+    };
+
+    return (
+      <div className={`relative inline-block ${showMenu ? 'z-20' : 'z-auto'}`} ref={menuRef}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowMenu((prev) => !prev);
+          }}
+          className="hover:cursor-pointer p-1.5 sm:p-2 rounded-md text-white hover:bg-white/20 transition"
+          aria-label={`Options for ${task.taskName}`}
+        >
+          <MoreHorizontal size={16} className="sm:w-[18px] sm:h-[18px]" />
+        </button>
+
+        {showMenu && (
+          <div
+            className="absolute right-0 mt-2 w-32 sm:w-36 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                setShowMenu(false);
+                confirmDelete();
+              }}
+              className="hover:cursor-pointer w-full flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm hover:bg-red-50 hover:text-red-600 transition"
+            >
+              <Trash2 size={14} className="sm:w-4 sm:h-4" />
+              Delete
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // --- CalendarMonth Component ---
+  function CalendarMonth({
+    year,
+    month,
+    tasks,
+    weekStart = "Mon",
+    onDateClick,
+    selectedDate,
+    onToggleTask,
+    onDeleteTask,
+    onOpenEditModal,
+  }: {
+    year: number;
+    month: number;
+    tasks: Task[];
+    categories: Categories;
+    weekStart?: "Mon" | "Sun";
+    onDateClick?: (date: Date) => void;
+    selectedDate?: Date | null;
+    onToggleTask: (taskId: string, currentStatus: boolean) => void;
+    onDeleteTask: (taskId: string) => void;
+    onOpenEditModal: (task: Task) => void;
+  }) {
+    const [cursor, setCursor] = useState(new Date(year, month, 1));
+    function ymd(d: Date | null) { if (!d) return ""; return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+    function startOfWeek(d: Date, weekStart: "Mon" | "Sun") { const day = d.getDay(); const diff = weekStart === "Mon" ? (day === 0 ? -6 : 1 - day) : -day; const nd = new Date(d); nd.setDate(d.getDate() + diff); nd.setHours(0, 0, 0, 0); return nd; }
+    function monthMatrix(year: number, month: number, weekStart: "Mon" | "Sun") { const first = new Date(year, month, 1); const firstCell = startOfWeek(first, weekStart); return Array.from({ length: 42 }, (_, i) => { const d = new Date(firstCell); d.setDate(firstCell.getDate() + i); return d; }); }
+    function dateInTask(date: Date, t: Task) { const taskDate = new Date(t.deadLine); const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()); const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999); return taskDate >= dayStart && taskDate <= dayEnd; }
+    function sameDay(a: Date, b: Date) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+    const cells = monthMatrix(cursor.getFullYear(), cursor.getMonth(), weekStart);
+    const weekLabels = weekStart === "Mon" ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const nav = (d: number) => { const x = new Date(cursor); x.setMonth(x.getMonth() + d); setCursor(x); };
+    const today = new Date();
+    const selectedDayTasks = tasks.filter((t) => { if (t.isFinished || !selectedDate) return false; const taskDate = new Date(t.deadLine); return ymd(taskDate) === ymd(selectedDate); });
+
+    return (
+      <div className="w-full">
+        <div className="w-full bg-neutral-900 rounded-xl sm:rounded-2xl p-2 sm:p-4">
+          <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
+            <button onClick={() => nav(-1)} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
+              ‹
+            </button>
+            <h2 className="text-base sm:text-xl font-semibold text-white">
+              {cursor.toLocaleString("en-US", { month: "long", year: "numeric" })}
+            </h2>
+            <button onClick={() => nav(1)} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
+              ›
+            </button>
+          </div>
+          <div className="grid grid-cols-7 text-center text-xs sm:text-sm text-neutral-400 mb-2">
+            {weekLabels.map((w) => (
+              <div key={w} className="py-1 sm:py-2">
+                {w}
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+            {cells.map((date, i) => {
+              const isOther = date.getMonth() !== cursor.getMonth();
+              const isToday = sameDay(date, today);
+              const isSelected = selectedDate && sameDay(date, selectedDate);
+              const dayTasks = tasks.filter((t) => !t.isFinished && dateInTask(date, t));
+              const sortedDayTasks = dayTasks.sort((a, b) => b.priorityLevel - a.priorityLevel);
+              const dots = sortedDayTasks.slice(0, 3).map((t) => priorityColors[t.priorityLevel] || defaultColor);
+              return (
+                <div key={i} onClick={() => onDateClick && onDateClick(date)} className={`rounded-lg sm:rounded-xl p-1.5 sm:p-3 min-h-[60px] sm:min-h-[80px] cursor-pointer transition-all ${isOther ? "bg-neutral-800 opacity-40" : "bg-neutral-800 hover:bg-neutral-700"} ${isSelected ? "ring-2 ring-blue-500" : ""}`}>
+                  <div className="flex items-center justify-between mb-1 sm:mb-2">
+                    <div className={`text-xs sm:text-sm ${isToday ? "bg-white text-black rounded-full w-5 h-5 sm:w-7 sm:h-7 flex items-center justify-center font-bold" : "text-white"}`}>
+                      {date.getDate()}
+                    </div>
+                  </div>
+                  <div className="flex gap-0.5 sm:gap-1 flex-wrap">
+                    {dots.map((c, idx) => (
+                      <span key={idx} className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ background: c }} />
+                    ))}
+                    {dayTasks.length > 3 && (
+                      <span className="text-[10px] sm:text-xs text-neutral-400">+{dayTasks.length - 3}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-3 sm:p-6 mt-3 sm:mt-4">
+          <h5 className="text-xl sm:text-3xl font-bold mb-3 sm:mb-4 text-white">
+            Tasks for{" "}
+            {selectedDate ? selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric" }) : "Selected Day"}
+          </h5>
+          {selectedDayTasks.length === 0 ? (
+            <div className="text-neutral-400 text-center py-6 sm:py-8 text-sm sm:text-base">
+              {selectedDate ? "No unfinished tasks for this day" : "Click a date to see tasks"}
+            </div>
+          ) : (
+            <div className="space-y-3 sm:space-y-4">
+              {selectedDayTasks
+                  .sort((a, b) => b.priorityLevel - a.priorityLevel)
+                  .map((task) => (
+                    <div 
+                      key={task.id} 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTaskClick(task);
+                      }}
+                      className="rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-md hover:opacity-90 hover:cursor-pointer transition" 
+                      style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}
+                    >
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="flex-shrink-0 mt-1">
+                          <button onClick={(e) => { e.stopPropagation(); onToggleTask(task.id, task.isFinished || false); }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
+                            {task.isFinished && (
+                              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                        <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <h3 className={`text-base sm:text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
+                            {task.taskName}
+                          </h3>
+                          <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm">
+                            <Calendar size={14} className="hidden sm:inline sm:w-4 sm:h-4" />
+                            <p className="hidden sm:inline">{formatTaskDate(task.deadLine)}</p>
+                            <Clock size={14} className="sm:w-4 sm:h-4" />
+                            <span className="font-semibold">{formatTaskTime(task.deadLine)}</span>
+                            {!task.classroom && (
+                              <TaskMenuButton
+                                task={task}
+                                handleDeleteTask={onDeleteTask}
+                                handleEditTask={onOpenEditModal}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // --- Week View Component ---
+  function WeekView({
+    selectedDate,
+    onDateChange,
+    tasks,
+    onSelectDay,
+    onToggleTask,
+    onDeleteTask,
+    onOpenEditModal,
+  }: {
+    selectedDate: Date;
+    onDateChange: (date: Date) => void;
+    tasks: Task[];
+    categories: Categories;
+    onSelectDay: (date: Date) => void;
+    onToggleTask: (taskId: string, currentStatus: boolean) => void;
+    onDeleteTask: (taskId: string) => void;
+    onOpenEditModal: (task: Task) => void;
+  }) {
+    const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const [selectedDay, setSelectedDay] = useState<string>(ymd(selectedDate));
+    useEffect(() => { setSelectedDay(ymd(selectedDate)); }, [selectedDate]);
+    const getMonday = (d: Date) => { const day = d.getDay(); const diff = day === 0 ? -6 : 1 - day; const monday = new Date(d); monday.setDate(d.getDate() + diff); return monday; };
+    const monday = getMonday(selectedDate);
+    const goToNextWeek = () => { const nextWeek = new Date(selectedDate); nextWeek.setDate(selectedDate.getDate() + 7); onDateChange(nextWeek); };
+    const goToPrevWeek = () => { const prevWeek = new Date(selectedDate); prevWeek.setDate(selectedDate.getDate() - 7); onDateChange(prevWeek); };
+    const handleDayClick = (iso: string, date: Date) => { setSelectedDay(iso); onSelectDay(date); };
+    const renderWeek = () => {
+      const week = [];
+      const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      for (let i = 0; i < 7; i++) {
+        const current = new Date(monday);
+        current.setDate(monday.getDate() + i);
+        const iso = ymd(current);
+        const dayTasks = tasks.filter((t) => { if (t.isFinished) return false; const taskDate = new Date(t.deadLine); return ymd(taskDate) === iso; });
+        const isSelected = selectedDay === iso;
+        const isToday = ymd(new Date()) === iso;
+        week.push(
+          <div key={iso} className={`relative rounded-lg sm:rounded-xl p-2 sm:p-4 cursor-pointer transition-all min-h-[80px] sm:min-h-[100px] ${isSelected ? "bg-blue-600 ring-2 ring-blue-400" : "bg-neutral-800 hover:bg-neutral-700"} ${isToday ? "ring-2 ring-white" : ""}`} onClick={() => handleDayClick(iso, current)}>
+            <div className="flex flex-col items-center mb-2 sm:mb-3">
+              <strong className="text-neutral-400 text-[10px] sm:text-xs">{weekdays[i]}</strong>
+              <div className={`text-sm sm:text-lg font-semibold mt-1 ${isToday && !isSelected ? "bg-white text-black rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center" : "text-white"}`}>
+                {current.getDate()}
+              </div>
+            </div>
+            {dayTasks.length > 0 && (
+              <div className="flex gap-0.5 sm:gap-1 justify-center flex-wrap">
+                {dayTasks.sort((a, b) => b.priorityLevel - a.priorityLevel).slice(0, 3).map((task, idx) => (
+                  <div key={idx} className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ background: priorityColors[task.priorityLevel] || defaultColor }} />
+                ))}
+                {dayTasks.length > 3 && <span className="text-[10px] sm:text-xs text-neutral-400">+{dayTasks.length - 3}</span>}
+              </div>
+            )}
+          </div>,
+        );
+      }
+      return week;
+    };
+    const selectedDayTasks = tasks.filter((t) => { if (t.isFinished) return false; const taskDate = new Date(t.deadLine); return ymd(taskDate) === selectedDay; });
+
+    return (
+      <div className="w-full">
+        <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-2 sm:p-4 mb-3 sm:mb-4">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <button onClick={goToPrevWeek} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
+              ‹
+            </button>
+            <h2 className="text-base sm:text-xl font-semibold text-white">
+              {monday.toLocaleString("default", { month: "long" })} {monday.getFullYear()}
+            </h2>
+            <button onClick={goToNextWeek} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
+              ›
+            </button>
+          </div>
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">{renderWeek()}</div>
+        </div>
+
+        <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-3 sm:p-6">
+          <h5 className="text-xl sm:text-3xl font-bold mb-3 sm:mb-4 text-white">Tasks</h5>
+          {selectedDayTasks.length === 0 ? (
+            <div className="text-neutral-400 text-center py-6 sm:py-8 text-sm sm:text-base">No unfinished tasks for this day</div>
+          ) : (
+            <div className="space-y-3 sm:space-y-4">
+              {selectedDayTasks
+                  .sort((a, b) => b.priorityLevel - a.priorityLevel)
+                  .map((task) => (
+                    <div 
+                      key={task.id} 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenEditModal(task);
+                      }}
+                      className="rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-md hover:opacity-90 hover:cursor-pointer transition" 
+                      style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}
+                    >
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="flex-shrink-0 mt-1">
+                          <button onClick={(e) => { e.stopPropagation(); onToggleTask(task.id, task.isFinished || false); }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
+                            {task.isFinished && (
+                              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                        <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <h3 className={`text-base sm:text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
+                            {task.taskName}
+                          </h3>
+                          <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm">
+                            <Calendar size={14} className="hidden sm:inline sm:w-4 sm:h-4" />
+                            <p className="hidden sm:inline">{formatTaskDate(task.deadLine)}</p>
+                            <Clock size={14} className="sm:w-4 sm:h-4" />
+                            <span className="font-semibold">{formatTaskTime(task.deadLine)}</span>
+                            {!task.classroom && (
+                              <TaskMenuButton
+                                task={task}
+                                handleDeleteTask={onDeleteTask}
+                                handleEditTask={onOpenEditModal}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // --- Day View Component ---
+  function DayView({
+    selectedDate,
+    tasks,
+    onDateChange,
+    onToggleTask,
+    onDeleteTask,
+    onOpenEditModal,
+  }: {
+    selectedDate: Date;
+    tasks: Task[];
+    categories: Categories;
+    onDateChange: (date: Date) => void;
+    onToggleTask: (taskId: string, currentStatus: boolean) => void;
+    onDeleteTask: (taskId: string) => void;
+    onOpenEditModal: (task: Task) => void;
+  }) {
+    const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const goToNextDay = () => { const nextDay = new Date(selectedDate); nextDay.setDate(selectedDate.getDate() + 1); onDateChange(nextDay); };
+    const goToPrevDay = () => { const prevDay = new Date(selectedDate); prevDay.setDate(selectedDate.getDate() - 1); onDateChange(prevDay); };
+    const dayTasks = tasks.filter((t) => { if (t.isFinished) return false; const taskDate = new Date(t.deadLine); return ymd(taskDate) === ymd(selectedDate); });
+
+    return (
+      <div className="w-full">
+        <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-2 sm:p-4 mb-3 sm:mb-4">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <button onClick={goToPrevDay} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
+              ‹
+            </button>
+            <h2 className="text-sm sm:text-xl font-semibold text-white text-center">
+              {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+            </h2>
+            <button onClick={goToNextDay} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-sm sm:text-base">
+              ›
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-3 sm:p-6">
+          <h5 className="text-xl sm:text-3xl font-bold mb-3 sm:mb-4 text-white">Tasks</h5>
+          {dayTasks.length === 0 ? (
+            <div className="text-neutral-400 text-center py-6 sm:py-8 text-sm sm:text-base">No unfinished tasks for this day</div>
+          ) : (
+            <div className="space-y-3 sm:space-y-4">
+              {dayTasks
+                .sort((a, b) => b.priorityLevel - a.priorityLevel)
+                  .map((task) => (
+                    <div 
+                      key={task.id} 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTaskClick(task);
+                      }}
+                      className="rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-md hover:opacity-90 hover:cursor-pointer transition" 
+                      style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}
+                    >
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="flex-shrink-0 mt-1">
+                          <button onClick={(e) => { e.stopPropagation(); onToggleTask(task.id, task.isFinished || false); }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
+                            {task.isFinished && (
+                              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                        <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <h3 className={`text-base sm:text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
+                            {task.taskName}
+                          </h3>
+                          <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm">
+                            <Calendar size={14} className="hidden sm:inline sm:w-4 sm:h-4" />
+                            <p className="hidden sm:inline">{formatTaskDate(task.deadLine)}</p>
+                            <Clock size={14} className="sm:w-4 sm:h-4" />
+                            <span className="font-semibold">{formatTaskTime(task.deadLine)}</span>
+                            {!task.classroom && (
+                              <TaskMenuButton
+                                task={task}
+                                handleDeleteTask={onDeleteTask}
+                                handleEditTask={onOpenEditModal}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 text-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-          <p>Loading tasks...</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 text-black flex flex-col">
+        
+        {/* Header */}
+        <header className="bg-black text-white p-6 mb-2">
+          <div className="h-7 w-36 bg-neutral-700 rounded animate-pulse"></div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto p-2 sm:p-4">
+          <div className="max-w-4xl mx-auto">
+
+            {/* Top View Switch */}
+            <div className="flex justify-center mb-4 sm:mb-6 gap-1 sm:gap-2 bg-white rounded-xl p-1 sm:p-2 w-fit mx-auto border shadow-sm">
+              {[1,2,3].map(i => (
+                <div
+                  key={i}
+                  className="rounded-lg bg-neutral-200 animate-pulse 
+                  h-9 sm:h-10 w-24 sm:w-28"
+                ></div>
+              ))}
+            </div>
+
+            {/* Month Calendar Skeleton */}
+            <div className="w-full bg-neutral-900 rounded-xl sm:rounded-2xl p-2 sm:p-4">
+              
+              {/* Calendar Month Header */}
+              <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
+                <div className="h-10 w-12 bg-neutral-800 rounded-lg animate-pulse"></div>
+                <div className="h-7 sm:h-8 w-40 sm:w-48 bg-neutral-800 rounded animate-pulse"></div>
+                <div className="h-10 w-12 bg-neutral-800 rounded-lg animate-pulse"></div>
+              </div>
+
+              {/* Weekday Labels */}
+              <div className="grid grid-cols-7 text-center text-xs sm:text-sm text-neutral-400 mb-2">
+                {[...Array(7)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-5 sm:h-6 w-full bg-neutral-800 rounded animate-pulse mx-auto"
+                  ></div>
+                ))}
+              </div>
+
+              {/* Calendar Cells */}
+              <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                {[...Array(42)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg sm:rounded-xl bg-neutral-800 animate-pulse 
+                    h-[60px] sm:h-[80px]"
+                  ></div>
+                ))}
+              </div>
+            </div>
+
+            {/* Task List Skeleton */}
+            <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-3 sm:p-6 mt-3 sm:mt-4">
+              
+              <div className="h-8 sm:h-10 w-48 bg-neutral-800 rounded mb-4 animate-pulse"></div>
+
+              {[1,2,3].map(i => (
+                <div
+                  key={i}
+                  className="rounded-xl sm:rounded-2xl bg-neutral-800 animate-pulse 
+                  h-[70px] sm:h-[90px] w-full mb-4"
+                ></div>
+              ))}
+
+            </div>
+
+          </div>
+        </main>
       </div>
     );
   }
@@ -712,10 +830,23 @@ export default function CalendarApp() {
                   tasks
                     .sort((a, b) => b.priorityLevel - a.priorityLevel)
                     .map((task) => (
-                      <div key={task.id} className="rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-md" style={{ backgroundColor: priorityColors[task.priorityLevel] || defaultColor }}>
+                      <div
+                        key={task.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEditModal(task);
+                        }}
+                        className="pointer-events-auto rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-md hover:cursor-pointer hover:opacity-90 transition"
+                      >
                         <div className="flex items-center gap-2 sm:gap-3">
                           <div className="flex-shrink-0 mt-1">
-                            <button onClick={(e) => { e.stopPropagation(); handleToggleTask(task.id, task.isFinished || false); }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleTask(task.id, task.isFinished || false);
+                              }}
+                              className="w-6 h-6 sm:w-7 sm:h-7 rounded-md border-2 border-white flex items-center justify-center cursor-pointer hover:bg-white/20 transition-all"
+                            >
                               {task.isFinished && (
                                 <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -723,20 +854,25 @@ export default function CalendarApp() {
                               )}
                             </button>
                           </div>
+
                           <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <h3 className={`text-base sm:text-xl truncate font-bold leading-tight ${task.isFinished ? 'line-through' : ''}`}>
                               {task.taskName}
                             </h3>
+
                             <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm">
                               <Calendar size={14} className="hidden sm:inline sm:w-4 sm:h-4" />
                               <p className="hidden sm:inline">{formatTaskDate(task.deadLine)}</p>
                               <Clock size={14} className="sm:w-4 sm:h-4" />
                               <span className="font-semibold">{formatTaskTime(task.deadLine)}</span>
-                              <TaskMenuButton
-                                task={task}
-                                handleDeleteTask={handleDeleteTask}
-                                handleEditTask={handleOpenEditModal}
-                              />
+
+                              {!task.classroom && (
+                                <TaskMenuButton
+                                  task={task}
+                                  handleDeleteTask={handleDeleteTask}
+                                  handleEditTask={handleOpenEditModal}
+                                />
+                              )}
                             </div>
                           </div>
                         </div>
@@ -774,6 +910,17 @@ export default function CalendarApp() {
           onClose={handleCloseEditModal}
         />
       )}
+
+      {showDetailsModal && selectedTaskId && (
+        <TaskDetailsModal
+          taskId={selectedTaskId}
+          onClose={() => {
+            setShowDetailsModal(false);
+            setSelectedTaskId(null);
+          }}
+        />
+      )}
+
     </div>
   );
 }

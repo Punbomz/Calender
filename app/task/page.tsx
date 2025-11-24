@@ -647,11 +647,13 @@ function TaskPageInner() {
                       <p className="text-sm opacity-90">{formatDate(task.deadLine)}</p>
                       <Clock className="w-4 h-4" />
                       <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
-                      <TaskMenuButton
-                        taskId={task.id}
-                        taskName={task.taskName}
-                        handleDeleteTask={handleDeleteTask}
-                      />
+                      { !task.classroom && (
+                        <TaskMenuButton
+                          taskId={task.id}
+                          taskName={task.taskName}
+                          handleDeleteTask={handleDeleteTask}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -723,11 +725,13 @@ function TaskPageInner() {
                           <p className="text-sm opacity-90">{formatDate(task.deadLine)}</p>
                           <Clock className="w-4 h-4" />
                           <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
-                          <TaskMenuButton
-                            taskId={task.id}
-                            taskName={task.taskName}
-                            handleDeleteTask={handleDeleteTask}
-                          />
+                          { !task.classroom && (
+                            <TaskMenuButton
+                              taskId={task.id}
+                              taskName={task.taskName}
+                              handleDeleteTask={handleDeleteTask}
+                            />
+                          )}
                         </div>
                       </div>
                     </div>
