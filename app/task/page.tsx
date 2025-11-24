@@ -727,13 +727,26 @@ function TaskPageInner() {
                         </button>
                       </div>
                       <div className="flex-1 min-w-0 flex items-center justify-between">
-                        <h3 className="text-xl font-bold leading-tight line-through truncate">{task.taskName}</h3>
+                        <h3 className="font-bold leading-tight truncate 
+                                      text-base sm:text-xl 
+                                      line-through">
+                          {task.taskName}
+                        </h3>
+
                         <div className="flex items-center gap-2 ml-4 whitespace-nowrap">
+
+                          {/* Date always visible */}
                           <Calendar size={18} />
                           <p className="text-sm opacity-90">{formatDate(task.deadLine)}</p>
-                          <Clock className="w-4 h-4" />
-                          <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
-                          { !task.classroom && (
+
+                          {/* Time hidden on small screens */}
+                          <div className="hidden sm:flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
+                          </div>
+
+                          {/* Menu button only for personal tasks */}
+                          {!task.classroom && (
                             <TaskMenuButton
                               taskId={task.id}
                               taskName={task.taskName}
