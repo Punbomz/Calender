@@ -478,17 +478,15 @@ export default function ClassroomTaskDetailsModal({
                           <div className="flex gap-2">
                             {!isMarkedForRemoval && (
                               <>
-                                {isImage && (
-                                  <a
-                                    href={fileUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-                                    title="ดูรูปภาพ"
-                                  >
-                                    <ExternalLink size={18} />
-                                  </a>
-                                )}
+                                <a
+                                  href={fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                                  title="ดู"
+                                >
+                                  <ExternalLink size={18} />
+                                </a>
                               </>
                             )}
                             {isEditing && (

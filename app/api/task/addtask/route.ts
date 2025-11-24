@@ -4,11 +4,10 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { cookies } from "next/headers";
 import { FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
+import { v4 as uuidv4 } from "uuid";
 
-// POST - Add new task
 export async function POST(request: NextRequest) {
   try {
-    // 1. ตรวจสอบ session cookie
     const cookieStore = await cookies();
     const session = cookieStore.get("session")?.value;
 
@@ -19,12 +18,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Verify session และดึง userId
     const decodedToken = await adminAuth.verifySessionCookie(session, true);
     const userId = decodedToken.uid;
 
-    // 3. รับข้อมูลจาก request body
     const formData = await request.formData();
+
     const taskNameRaw =
       (formData.get("taskName") as string | null) ||
       (formData.get("title") as string | null);
@@ -40,7 +38,6 @@ export async function POST(request: NextRequest) {
       (formData.get("deadLine") as string | null) ||
       (formData.get("deadline") as string | null);
 
-    // 4. Validate required fields
     if (!taskNameRaw || !deadlineRaw) {
       return NextResponse.json(
         { success: false, error: "Missing required fields: taskName, category, deadLine" },
@@ -48,7 +45,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. แปลง deadLine เป็น Firestore Timestamp
     let deadlineTimestamp: Date;
     try {
       deadlineTimestamp = new Date(deadlineRaw);
@@ -62,17 +58,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. จัดการไฟล์แนบ
-    const files = formData.getAll("files"); 
+    const files = formData.getAll("files");
     const attachmentUrls: string[] = [];
 
     if (files && files.length > 0) {
       const storage = getStorage();
-      // FIX: Specify bucket name explicitly
       const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
       const bucket = storage.bucket(bucketName);
-      
-      console.log('📦 Using storage bucket:', bucketName);
 
       for (const file of files) {
         if (!(file instanceof File)) continue;
@@ -81,26 +73,29 @@ export async function POST(request: NextRequest) {
         const buffer = Buffer.from(bytes);
 
         const safeName = file.name.replace(/\s+/g, "_");
-        const filePath = `tasks/${userId}/${Date.now()}-${safeName}`;
+        const id = uuidv4();
+        const filePath = `tasks/${userId}/${Date.now()}-${id}-${safeName}`;
+
         const fileRef = bucket.file(filePath);
 
         await fileRef.save(buffer, {
+          resumable: false,
           metadata: {
             contentType: file.type || "application/octet-stream",
+            metadata: {
+              firebaseStorageDownloadTokens: id
+            }
           },
-          resumable: false,
         });
 
-        // Make file publicly accessible (optional - adjust based on your security needs)
-        await fileRef.makePublic();
-
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+        // --- 🔥 Correct public URL ---
+        const publicUrl =
+          `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${id}`;
 
         attachmentUrls.push(publicUrl);
       }
     }
 
-    // 7. สร้าง task object
     const taskData = {
       taskName: taskNameRaw.trim(),
       description: descriptionRaw.trim(),
@@ -112,14 +107,12 @@ export async function POST(request: NextRequest) {
       attachments: attachmentUrls,
     };
 
-    // 8. เพิ่ม task ลง Firestore
     const taskRef = await adminDb
       .collection("users")
       .doc(userId)
       .collection("tasks")
       .add(taskData);
 
-    // 9. ดึงข้อมูล task ที่เพิ่มมาใหม่
     const newTaskDoc = await taskRef.get();
     const newTask = { id: newTaskDoc.id, ...newTaskDoc.data() };
 
@@ -134,7 +127,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error("Error adding task:", error);
-    
+
     if (error.code === "auth/session-cookie-expired") {
       return NextResponse.json(
         { success: false, error: "Session expired" },
@@ -149,4 +142,4 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";

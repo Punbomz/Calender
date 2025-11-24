@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb, adminAuth, adminStorage } from "@/lib/firebaseAdmin";
+import { adminDb, adminAuth } from "@/lib/firebaseAdmin";
 import { FieldValue } from "firebase-admin/firestore";
 import { cookies } from "next/headers";
 import { v4 as uuidv4 } from "uuid";
+import { getStorage } from "firebase-admin/storage";
 
-const BUCKET_NAME = process.env.FIREBASE_STORAGE_BUCKET || "your-project-id.appspot.com";
+const BUCKET_NAME = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -36,11 +37,13 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
+    // --------------------------------------------
+    // Update base task fields
+    // --------------------------------------------
     const updateData: any = {
       updatedAt: new Date(),
     };
 
-    // Get form values
     const taskName = form.get("taskName") as string | null;
     const description = form.get("description") as string | null;
     const priorityLevel = form.get("priorityLevel") as string | null;
@@ -48,110 +51,105 @@ export async function PATCH(req: NextRequest) {
     const deadLine = form.get("deadLine") as string | null;
     const isFinishedValue = form.get("isFinished");
 
-    console.log("Received form data:", {
-      taskId,
-      taskName,
-      description,
-      priorityLevel,
-      category,
-      deadLine,
-      isFinished: isFinishedValue
-    });
+    if (taskName) updateData.taskName = taskName.trim();
+    if (description) updateData.description = description.trim();
 
-    // Update fields with Firestore field names
-    if (taskName !== null && taskName !== undefined) {
-      const trimmed = taskName.trim();
-      if (trimmed) updateData.taskName = trimmed;
+    if (priorityLevel) {
+      const p = Number(priorityLevel);
+      if (!isNaN(p)) updateData.priorityLevel = p;
     }
 
-    if (description !== null && description !== undefined) {
-      updateData.description = description.trim();
-    }
+    if (category) updateData.category = category;
 
-    if (priorityLevel !== null && priorityLevel !== undefined) {
-      const priority = Number(priorityLevel);
-      if (!isNaN(priority)) {
-        updateData.priorityLevel = priority;
-      }
-    }
-
-    if (category !== null && category !== undefined) {
-      updateData.category = category;
-    }
-
-    if (deadLine !== null && deadLine !== undefined) {
-      try {
-        const deadlineDate = new Date(deadLine);
-        if (!isNaN(deadlineDate.getTime())) {
-          updateData.deadLine = deadlineDate;
-        }
-      } catch (err) {
-        console.error("Invalid deadline format:", err);
-      }
+    if (deadLine) {
+      const d = new Date(deadLine);
+      if (!isNaN(d.getTime())) updateData.deadLine = d;
     }
 
     if (isFinishedValue !== null && isFinishedValue !== undefined) {
-      const isFinishedBool = String(isFinishedValue).toLowerCase() === "true";
-      updateData.isFinished = isFinishedBool;
-      console.log("Setting isFinished to:", updateData.isFinished);
+      updateData.isFinished = String(isFinishedValue).toLowerCase() === "true";
     }
 
-    const bucket = adminStorage.bucket(BUCKET_NAME);
-    const newFiles = form.getAll("files") as File[];
-    const deleteFiles = form.getAll("deleteFiles") as string[];
+    // Apply field updates (not attachments yet)
+    await taskRef.update(updateData);
 
-    // Delete marked files
+    // --------------------------------------------
+    // Handle attachments
+    // --------------------------------------------
+    const storage = getStorage();
+    const bucket = storage.bucket(BUCKET_NAME);
+
+    const deleteFiles = form.getAll("deleteFiles") as string[];
+    const newFiles = form.getAll("files") as File[];
+
+    // --------------------------------------------
+    // 1️⃣ REMOVE old attachments (DB + storage)
+    // --------------------------------------------
     if (deleteFiles.length > 0) {
+      // Firestore remove
+      await taskRef.update({
+        attachments: FieldValue.arrayRemove(...deleteFiles),
+      });
+
+      // Storage delete
       for (const url of deleteFiles) {
         try {
-          const path = decodeURIComponent(url.split("/o/")[1].split("?")[0]);
-          await bucket.file(path).delete();
+          const cleanPath = decodeURIComponent(url.split("/o/")[1].split("?")[0]);
+          await bucket.file(cleanPath).delete();
         } catch (err) {
-          console.warn("Failed to delete file:", url, err);
+          console.warn("Failed to delete storage file:", url, err);
         }
       }
-      updateData.attachments = FieldValue.arrayRemove(...deleteFiles);
     }
 
-    // Upload new files
+    // --------------------------------------------
+    // 2️⃣ UPLOAD new attachments (DB + storage)
+    // --------------------------------------------
     const uploadedUrls: string[] = [];
-    for (const file of newFiles) {
-      if (file.size === 0) continue;
-      
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const fileId = uuidv4();
-      const filePath = `tasks/${userId}/${taskId}/${fileId}-${file.name}`;
-      const uploadedFile = bucket.file(filePath);
 
-      await uploadedFile.save(buffer, {
-        contentType: file.type,
+    for (const file of newFiles) {
+      if (!(file instanceof File)) continue;
+      if (file.size === 0) continue;
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const token = uuidv4();
+
+      const safeName = file.name.replace(/\s+/g, "_");
+      const filePath = `tasks/${userId}/${taskId}/${Date.now()}-${token}-${safeName}`;
+      const fileRef = bucket.file(filePath);
+
+      await fileRef.save(buffer, {
+        resumable: false,
         metadata: {
+          contentType: file.type || "application/octet-stream",
           metadata: {
-            firebaseStorageDownloadTokens: uuidv4(),
+            firebaseStorageDownloadTokens: token,
           },
         },
       });
 
-      const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
+      const publicUrl =
+        `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+
       uploadedUrls.push(publicUrl);
     }
 
     if (uploadedUrls.length > 0) {
-      updateData.attachments = FieldValue.arrayUnion(...uploadedUrls);
+      await taskRef.update({
+        attachments: FieldValue.arrayUnion(...uploadedUrls),
+      });
     }
 
-    console.log("Applying update:", updateData);
-    await taskRef.update(updateData);
-
-    const updatedTaskDoc = await taskRef.get();
-    const updatedTaskData = updatedTaskDoc.data();
-
-    console.log("Task updated successfully");
+    // --------------------------------------------
+    // Return updated task
+    // --------------------------------------------
+    const refreshed = await taskRef.get();
 
     return NextResponse.json({
       success: true,
-      task: updatedTaskData,
+      task: { id: refreshed.id, ...refreshed.data() },
     });
+
   } catch (err: any) {
     console.error("Update failed:", err);
     return NextResponse.json(
