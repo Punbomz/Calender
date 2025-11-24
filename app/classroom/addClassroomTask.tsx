@@ -317,7 +317,7 @@ export default function AddClassroomTaskModal({
                                             <button
                                                 type="button"
                                                 onClick={() => handleRemoveFile(index)}
-                                                className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                                className="hover:cursor-pointer absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                                                 title="ลบไฟล์"
                                             >
                                                 <X size={16} />
