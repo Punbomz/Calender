@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Calendar, Clock, AlertCircle, Plus, MoreHorizontal, Trash2 } from 'lucide-react';
 import AddTaskModal from './AddTask';
 import EditTaskModal from './EditTask';
+import TaskDetailsModal from './TaskDetailsModal';
 import { useTaskUpdate } from '../contexts/TaskContext';
 
 interface Task {
@@ -65,6 +66,10 @@ function TaskPageInner() {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingTask, setEditingTask] = useState<EditTask | null>(null);
+
+  // New state for TaskDetailsModal
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   // Fetch classroom name if classroomParam exists
   useEffect(() => {
@@ -216,6 +221,17 @@ function TaskPageInner() {
     setShowEditModal(true);
   };
 
+  const handleTaskClick = (task: Task) => {
+    // If task has classroom, show read-only details modal
+    if (task.classroom) {
+      setSelectedTaskId(task.id);
+      setShowDetailsModal(true);
+    } else {
+      // Otherwise, show editable modal
+      handleEditTask(task);
+    }
+  };
+
   const handleSaveEditedTask = async (updatedTask: EditTask) => {
     try {
       setTasks(prevTasks =>
@@ -277,6 +293,7 @@ function TaskPageInner() {
   };
 
   const handleCheckboxChange = async (taskId: string, currentStatus: boolean) => {
+    // Optimistically update UI
     setTasks(prevTasks =>
       prevTasks.map(task =>
         task.id === taskId ? { ...task, isFinished: !currentStatus } : task
@@ -302,6 +319,7 @@ function TaskPageInner() {
     } catch (error) {
       console.error('Error updating task status:', error);
       alert('อัพเดทสถานะไม่สำเร็จ');
+      // Revert optimistic update
       setTasks(prevTasks =>
         prevTasks.map(task =>
           task.id === taskId ? { ...task, isFinished: currentStatus } : task
@@ -591,7 +609,7 @@ function TaskPageInner() {
                 className={`${getCardColor(task.priorityLevel)} rounded-2xl p-5 text-white shadow-md hover:cursor-pointer ${
                   isCompletedView ? 'opacity-75' : ''
                 }`}
-                onClick={() => handleEditTask(task)}
+                onClick={() => handleTaskClick(task)}
                 aria-label={`Edit ${task.taskName}`}
               >
                 <div className="flex items-center gap-3">
@@ -629,11 +647,13 @@ function TaskPageInner() {
                       <p className="text-sm opacity-90">{formatDate(task.deadLine)}</p>
                       <Clock className="w-4 h-4" />
                       <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
-                      <TaskMenuButton
-                        taskId={task.id}
-                        taskName={task.taskName}
-                        handleDeleteTask={handleDeleteTask}
-                      />
+                      { !task.classroom && (
+                        <TaskMenuButton
+                          taskId={task.id}
+                          taskName={task.taskName}
+                          handleDeleteTask={handleDeleteTask}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -669,7 +689,7 @@ function TaskPageInner() {
                   <div
                     key={task.id}
                     className={`${getCardColor(task.priorityLevel)} hover:cursor-pointer rounded-2xl p-5 text-white shadow-md opacity-75`}
-                    onClick={() => handleEditTask(task)}
+                    onClick={() => handleTaskClick(task)}
                     aria-label={`Edit ${task.taskName}`}
                   >
                     <div className="flex items-center gap-3">
@@ -705,11 +725,13 @@ function TaskPageInner() {
                           <p className="text-sm opacity-90">{formatDate(task.deadLine)}</p>
                           <Clock className="w-4 h-4" />
                           <span className="text-sm font-semibold">{formatTime(task.deadLine)}</span>
-                          <TaskMenuButton
-                            taskId={task.id}
-                            taskName={task.taskName}
-                            handleDeleteTask={handleDeleteTask}
-                          />
+                          { !task.classroom && (
+                            <TaskMenuButton
+                              taskId={task.id}
+                              taskName={task.taskName}
+                              handleDeleteTask={handleDeleteTask}
+                            />
+                          )}
                         </div>
                       </div>
                     </div>
@@ -751,6 +773,17 @@ function TaskPageInner() {
             onClose={() => {
               setShowEditModal(false);
               setEditingTask(null);
+            }}
+          />
+        )}
+
+        {/* Task Details Modal (Read-only for classroom tasks) */}
+        {showDetailsModal && selectedTaskId && (
+          <TaskDetailsModal
+            taskId={selectedTaskId}
+            onClose={() => {
+              setShowDetailsModal(false);
+              setSelectedTaskId(null);
             }}
           />
         )}

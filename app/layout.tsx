@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import TaskDeadlineNotifier from "./components/TaskDeadlineNotifier";
+import ClassroomSyncManager from "./components/ClassroomSyncManager"; // ← Add this
 import { Analytics } from "@vercel/analytics/next"
 import ConditionalNavbar from './components/ConditionalNavbar';
 import MainContent from './components/MainContent';
@@ -38,7 +39,8 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <ConditionalNavbar />
           </Suspense>
-          <TaskDeadlineNotifier /> {/* ✅ แจ้งเตือนตอนเปิดเว็บ */}
+          <TaskDeadlineNotifier />
+          <ClassroomSyncManager /> {/* ← Add this - syncs classroom tasks */}
           <MainContent>
             {children}
           </MainContent>

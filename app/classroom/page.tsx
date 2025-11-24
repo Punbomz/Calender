@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation"; 
 import { db, auth, onAuthStateChanged } from "@/lib/firebaseClient";
 import CreateClassroomModal from "./createClassroom";
 import JoinClassroomModal from "./joinClassroom";
@@ -26,6 +27,7 @@ export default function ClassroomPage() {
   const [role, setRole] = useState<"teacher" | "student" | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [openJoin, setOpenJoin] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -126,16 +128,8 @@ export default function ClassroomPage() {
         }}
       >
         {/* Top bar */}
-        <div
-          style={{
-            backgroundColor: "black",
-            color: "white",
-            padding: "12px 16px",
-            fontFamily: "monospace",
-            fontSize: 20,
-          }}
-        >
-          My Classroom
+        <div className="bg-black text-white p-6">
+          <h1 className="text-2xl font-bold">My Classroom</h1>
         </div>
 
         {/* Content with skeleton */}
@@ -241,18 +235,10 @@ export default function ClassroomPage() {
         flexDirection: "column",
       }}
     >
-      {/* Top bar */}
-      <div
-        style={{
-          backgroundColor: "black",
-          color: "white",
-          padding: "12px 16px",
-          fontFamily: "monospace",
-          fontSize: 20,
-        }}
-      >
-        My Classroom
-      </div>
+      {/* Header */}
+        <header className="bg-black text-white p-6">
+          <h1 className="text-2xl font-bold">My Classroom</h1>
+        </header>
 
       {/* Content */}
       <div
@@ -264,10 +250,7 @@ export default function ClassroomPage() {
         }}
       >
         <div
-          style={{
-            width: "100%",
-            maxWidth: 480,
-          }}
+          className="w-xl"
         >
           {/* ปุ่มด้านบน: ถ้า teacher → Create, ถ้า student → Join */}
           <button
@@ -306,9 +289,10 @@ export default function ClassroomPage() {
             {classrooms.map((room) => (
               <button
                 key={room.classroomID}
-                onClick={() =>
+                onClick={() => {
                   console.log("Open classroom:", room.classroomID)
-                }
+                  router.push(`/classroom/info?id=${room.classroomID}`);
+                }}
                 className="classroom-item"
                 style={{
                   width: "100%",

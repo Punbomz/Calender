@@ -81,8 +81,10 @@ export async function GET(request: NextRequest) {
       tasksQuery = tasksQuery.where("category", "==", category);
     }
 
-    if (isFinished !== null) {
-      tasksQuery = tasksQuery.where("isFinished", "==", isFinished === "true");
+    if (isFinished !== null && isFinished !== undefined) {
+      const isFinishedBool = isFinished === "true";
+      console.log('🔍 Filtering by isFinished:', isFinishedBool);
+      tasksQuery = tasksQuery.where("isFinished", "==", isFinishedBool);
     }
 
     const tasksSnapshot = await tasksQuery.get();
