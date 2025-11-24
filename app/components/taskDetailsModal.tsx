@@ -619,7 +619,7 @@ export default function ClassroomTaskDetailsModal({
               
               <div className="flex items-center gap-4">
                 {editedData && (
-                  <>
+                  <div className="row-gap-4 flex items-center gap-4">
                     {isEditing ? (
                       <>
                         <button
@@ -666,7 +666,7 @@ export default function ClassroomTaskDetailsModal({
                         </button>
                       </>
                     )}
-                  </>
+                  </div>
                 )}
                 
                 {!editedData && (
