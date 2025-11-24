@@ -116,25 +116,54 @@ export async function PUT(request: NextRequest) {
 
       for (const fileUrl of filesToRemove) {
         try {
-          // Extract file path from URL
+          console.log(`🔍 Attempting to delete: ${fileUrl}`);
+          
+          // Extract file path from Google Cloud Storage URL
+          // Format: https://storage.googleapis.com/bucket-name/path/to/file
           const url = new URL(fileUrl);
-          const pathMatch = url.pathname.match(/\/o\/(.+)$/);
-          if (pathMatch) {
-            const filePath = decodeURIComponent(pathMatch[1]);
-            const fileRef = bucket.file(filePath);
+          
+          // Remove leading slash and decode
+          let filePath = url.pathname.substring(1); // Remove leading /
+          
+          // If URL has /o/ format (legacy format), extract after /o/
+          if (filePath.includes('/o/')) {
+            const parts = filePath.split('/o/');
+            filePath = parts[1];
+          }
+          
+          // Decode URL encoding
+          filePath = decodeURIComponent(filePath);
+          
+          // Remove bucket name if it's at the start of the path
+          if (bucketName && filePath.startsWith(bucketName + '/')) {
+              filePath = filePath.substring(bucketName.length + 1);
+            }
+          
+          console.log(`📂 Extracted file path: ${filePath}`);
+          
+          const fileRef = bucket.file(filePath);
+          
+          // Check if file exists before deleting
+          const [exists] = await fileRef.exists();
+          if (exists) {
             await fileRef.delete();
-            console.log(`✅ Deleted file: ${filePath}`);
+            console.log(`✅ Successfully deleted file: ${filePath}`);
+          } else {
+            console.log(`⚠️ File not found in storage: ${filePath}`);
           }
         } catch (fileError) {
-          console.error(`⚠️ Could not delete file ${fileUrl}:`, fileError);
-          // Continue with other files
+          console.error(`❌ Could not delete file ${fileUrl}:`, fileError);
+          console.error('Error details:', fileError instanceof Error ? fileError.message : 'Unknown error');
+          // Continue with other files instead of failing
         }
       }
 
-      // Filter out removed files from existing files
+      // Filter out removed files from existing files list
       existingFiles = existingFiles.filter(
         (url: string) => !filesToRemove.includes(url)
       );
+      
+      console.log(`✅ Files removed from database. Remaining files: ${existingFiles.length}`);
     }
 
     // Upload new files to Firebase Storage

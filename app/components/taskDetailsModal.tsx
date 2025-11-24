@@ -22,6 +22,7 @@ interface TaskDetailsModalProps {
   onClose: () => void;
   onTaskUpdated?: () => void;
   onTaskDeleted?: () => void;
+  userRole?: string; // Add userRole prop
 }
 
 interface TaskData {
@@ -40,6 +41,7 @@ export default function ClassroomTaskDetailsModal({
   onClose,
   onTaskUpdated,
   onTaskDeleted,
+  userRole = "student", // Default to student if not provided
 }: TaskDetailsModalProps) {
   const [taskData, setTaskData] = useState<TaskData | null>(null);
   const [editedData, setEditedData] = useState<TaskData | null>(null);

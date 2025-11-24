@@ -90,6 +90,7 @@ export async function DELETE(request: NextRequest) {
 
     // Delete all associated files from storage
     if (files.length > 0) {
+      console.log(`📁 Deleting ${files.length} files from storage...`);
       try {
         const storage = getStorage();
         const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
@@ -97,17 +98,43 @@ export async function DELETE(request: NextRequest) {
 
         for (const fileUrl of files) {
           try {
-            // Extract file path from URL
+            console.log(`🔍 Attempting to delete: ${fileUrl}`);
+            
+            // Extract file path from Google Cloud Storage URL
             const url = new URL(fileUrl);
-            const pathMatch = url.pathname.match(/\/o\/(.+)$/);
-            if (pathMatch) {
-              const filePath = decodeURIComponent(pathMatch[1]);
-              const fileRef = bucket.file(filePath);
+            
+            // Remove leading slash and decode
+            let filePath = url.pathname.substring(1);
+            
+            // If URL has /o/ format (legacy format), extract after /o/
+            if (filePath.includes('/o/')) {
+              const parts = filePath.split('/o/');
+              filePath = parts[1];
+            }
+            
+            // Decode URL encoding
+            filePath = decodeURIComponent(filePath);
+            
+            // Remove bucket name if it's at the start of the path
+            if (bucketName && filePath.startsWith(bucketName + '/')) {
+              filePath = filePath.substring(bucketName.length + 1);
+            }
+            
+            console.log(`📂 Extracted file path: ${filePath}`);
+            
+            const fileRef = bucket.file(filePath);
+            
+            // Check if file exists before deleting
+            const [exists] = await fileRef.exists();
+            if (exists) {
               await fileRef.delete();
-              console.log(`✅ Deleted file: ${filePath}`);
+              console.log(`✅ Successfully deleted file: ${filePath}`);
+            } else {
+              console.log(`⚠️ File not found in storage: ${filePath}`);
             }
           } catch (fileError) {
-            console.error(`⚠️ Could not delete file ${fileUrl}:`, fileError);
+            console.error(`❌ Could not delete file ${fileUrl}:`, fileError);
+            console.error('Error details:', fileError instanceof Error ? fileError.message : 'Unknown error');
             // Continue with other files
           }
         }
