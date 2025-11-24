@@ -1,169 +1,95 @@
-// app/api/task/updatetask/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { cookies } from "next/headers";
-import { FieldValue } from "firebase-admin/firestore";
-import { getStorage } from "firebase-admin/storage";
+import { NextRequest, NextResponse } from 'next/server';
+import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
+import { cookies } from 'next/headers';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
-
-// PATCH - Update a task
 export async function PATCH(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const session = cookieStore.get("session")?.value;
+    const sessionCookie = cookieStore.get('session')?.value;
 
-    if (!session) {
+    if (!sessionCookie) {
       return NextResponse.json(
-        { error: "Unauthorized - No session found" },
+        { error: 'Unauthorized - No session found' },
         { status: 401 }
       );
     }
 
-    const decodedToken = await adminAuth.verifySessionCookie(session, true);
-    const userId = decodedToken.uid;
+    // Verify session and get user ID
+    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
+    const userId = decodedClaims.uid;
 
-    // Parse form data
-    const formData = await request.formData();
-    const taskId = formData.get("taskId") as string | null;
-    if (!taskId) {
+    if (!userId) {
       return NextResponse.json(
-        { success: false, error: "Task ID is required" },
+        { error: 'Invalid session' },
+        { status: 401 }
+      );
+    }
+
+    // Parse request body
+    const body = await request.json();
+    const { taskId, isFinished } = body;
+
+    if (!taskId || typeof isFinished !== 'boolean') {
+      return NextResponse.json(
+        { error: 'Missing required fields: taskId and isFinished' },
         { status: 400 }
       );
     }
 
+    console.log('📝 Updating task status:', { taskId, isFinished, userId });
+
+    // Update the task status in user's tasks collection
     const taskRef = adminDb
-      .collection("users")
+      .collection('users')
       .doc(userId)
-      .collection("tasks")
+      .collection('tasks')
       .doc(taskId);
 
-    // Check if task exists
     const taskDoc = await taskRef.get();
+
     if (!taskDoc.exists) {
       return NextResponse.json(
-        { success: false, error: "Task not found" },
+        { error: 'Task not found' },
         { status: 404 }
       );
     }
 
-    const existingData = taskDoc.data() || {};
-    const updates: any ={};
-
-    const taskName = formData.get("taskName") as string | null;
-    if (taskName !== null) {
-      updates.taskName = taskName.trim();
-    }
-
-    const description = formData.get("description") as string | null;
-    if (description !== null) {
-      updates.description = description.trim();
-    }
-
-    const category = formData.get("category") as string | null;
-    if (category !== null) {
-      updates.category = category.trim();
-    } else {
-      updates.category = "";
-    }
-
-    const priorityLevel = formData.get("priorityLevel") as string | null;
-    if (priorityLevel !== null) {
-      const num = Number(priorityLevel);
-      if (!Number.isNaN(num)) {
-        updates.priorityLevel = num;
-      }
-    }
-
-    const deadLine = formData.get("deadLine") as string | null;
-    if (deadLine !== null) {
-      const d = new Date(deadLine);
-      if (Number.isNaN(d.getTime())) {
-        return NextResponse.json(
-          { success: false, error: "Invalid deadline format" },
-          { status: 400 }
-        );
-      }
-      updates.deadLine = d;
-    }
-
-    const files = formData
-      .getAll("files") 
-      .filter((f) => f instanceof File) as File[];
-    if (files.length > 0) {
-      const storage = getStorage();
-      // FIX: Specify bucket name explicitly
-      const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-      const bucket = storage.bucket(bucketName);
-      
-      console.log('📦 Using storage bucket:', bucketName);
-      const newAttachmentUrls: string[] = [];
-
-      for (const file of files) {
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        const safeName = file.name.replace(/\s+/g, "_");
-        const filePath = `tasks/${userId}/${Date.now()}-${safeName}`;
-        const fileRef = bucket.file(filePath);
-        await fileRef.save(buffer, {
-          metadata: { 
-            contentType: file.type || "application/octet-stream",
-          },
-          resumable: false,
-        });
-
-        // Make file publicly accessible (optional)
-        await fileRef.makePublic();
-
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
-        newAttachmentUrls.push(publicUrl);
-      }
-
-      const existingAttachments = Array.isArray(existingData.attachments)
-        ? existingData.attachments
-        : [];
-
-      updates.attachments = [...existingAttachments, ...newAttachmentUrls];
-    }
-
-    if (Object.keys(updates).length === 0) {
-      return NextResponse.json(
-        { success: false, error: "No update data provided" },
-        { status: 400 }
-      );
-    }
-
-    updates.updatedAt = FieldValue.serverTimestamp();
-
-    await taskRef.update(updates);
-
-    // Fetch the updated task
-    const updatedTaskDoc = await taskRef.get();
-    const updatedTask = {
-      id: updatedTaskDoc.id,
-      ...updatedTaskDoc.data(),
-    };
-
-    return NextResponse.json({
-      success: true,
-      message: "Task updated successfully",
-      task: updatedTask,
+    // Update the isFinished status
+    await taskRef.update({
+      isFinished: isFinished,
+      updatedAt: new Date(),
     });
-  } catch (error: any) {
-    console.error("Error updating task:", error);
 
-    if (error.code === "auth/session-cookie-expired") {
+    console.log('✅ Task status updated successfully');
+
+    return NextResponse.json(
+      { 
+        success: true,
+        message: 'Task status updated successfully',
+        isFinished: isFinished
+      },
+      { status: 200 }
+    );
+
+  } catch (error: any) {
+    console.error('❌ Error updating task status:', error);
+    
+    if (error.code === 'auth/session-cookie-expired' || 
+        error.code === 'auth/session-cookie-revoked') {
       return NextResponse.json(
-        { success: false, error: "Session expired" },
+        { error: 'Session expired. Please login again.' },
         { status: 401 }
       );
     }
 
     return NextResponse.json(
-      { success: false, error: "Failed to update task", details: error.message },
+      { 
+        error: 'Failed to update task status',
+        details: error.message 
+      },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = 'force-dynamic';

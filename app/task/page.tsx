@@ -293,6 +293,7 @@ function TaskPageInner() {
   };
 
   const handleCheckboxChange = async (taskId: string, currentStatus: boolean) => {
+    // Optimistically update UI
     setTasks(prevTasks =>
       prevTasks.map(task =>
         task.id === taskId ? { ...task, isFinished: !currentStatus } : task
@@ -318,6 +319,7 @@ function TaskPageInner() {
     } catch (error) {
       console.error('Error updating task status:', error);
       alert('อัพเดทสถานะไม่สำเร็จ');
+      // Revert optimistic update
       setTasks(prevTasks =>
         prevTasks.map(task =>
           task.id === taskId ? { ...task, isFinished: currentStatus } : task
